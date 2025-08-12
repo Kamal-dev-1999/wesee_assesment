@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gaming Staking dApp</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+        
+        .main-content {
+            padding: 40px;
+        }
+        
+        .section {
+            margin-bottom: 40px;
+            padding: 30px;
+            border: 1px solid #e1e8ed;
+            border-radius: 15px;
+            background: #f8f9fa;
+        }
+        
+        .section h2 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 1.8rem;
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 10px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #34495e;
+        }
+        
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.4);
+        }
+        
+        .btn:disabled {
+            background: #bdc3c7;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .btn-secondary {
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+        }
+        
+        .btn-secondary:hover {
+            box-shadow: 0 5px 15px rgba(231, 76, 60, 0.4);
+        }
+        
+        .status {
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            font-weight: 500;
+        }
+        
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin-top: 30px;
+        }
+        
+        .card {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+            border: 1px solid #e1e8ed;
+        }
+        
+        .card h3 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-size: 1.4rem;
+        }
+        
+        .balance-display {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #27ae60;
+            text-align: center;
+            margin: 20px 0;
+        }
+        
+        .leaderboard {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .leaderboard-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+            transition: background-color 0.2s;
+        }
+        
+        .leaderboard-item:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .leaderboard-item:last-child {
+            border-bottom: none;
+        }
+        
+        .rank {
+            font-weight: bold;
+            color: #3498db;
+            min-width: 30px;
+        }
+        
+        .address {
+            font-family: monospace;
+            font-size: 0.9rem;
+            color: #7f8c8d;
+            flex: 1;
+            margin: 0 15px;
+        }
+        
+        .stats {
+            text-align: right;
+            font-size: 0.9rem;
+        }
+        
+        .wins {
+            color: #27ae60;
+            font-weight: bold;
+        }
+        
+        .gt-won {
+            color: #f39c12;
+            font-weight: bold;
+        }
+        
+        .loading {
+            text-align: center;
+            color: #7f8c8d;
+            font-style: italic;
+        }
+        
+        .wallet-info {
+            background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+        }
+        
+        .wallet-info h3 {
+            margin-bottom: 10px;
+        }
+        
+        .wallet-address {
+            font-family: monospace;
+            background: rgba(255,255,255,0.2);
+            padding: 8px 12px;
+            border-radius: 6px;
+            word-break: break-all;
+        }
+        
+        .connect-wallet {
+            text-align: center;
+            padding: 40px;
+        }
+        
+        .connect-wallet h2 {
+            margin-bottom: 20px;
+            color: #2c3e50;
+        }
+        
+        .btn-large {
+            padding: 16px 32px;
+            font-size: 18px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎮 Gaming Staking dApp</h1>
+            <p>Decentralized PvP Gaming with Trustless Staking</p>
+        </div>
+        
+        <div class="main-content">
+            <!-- Wallet Connection Section -->
+            <div id="wallet-section" class="section">
+                <h2>🔗 Wallet Connection</h2>
+                <div id="wallet-info" class="wallet-info" style="display: none;">
+                    <h3>Connected Wallet</h3>
+                    <div class="wallet-address" id="wallet-address"></div>
+                    <button class="btn btn-secondary" onclick="disconnectWallet()" style="margin-top: 15px;">Disconnect</button>
+                </div>
+                <div id="connect-wallet" class="connect-wallet">
+                    <h2>Connect Your Wallet</h2>
+                    <p>Connect MetaMask to start using the dApp</p>
+                    <button class="btn btn-large" onclick="connectWallet()">Connect MetaMask</button>
+                </div>
+            </div>
+            
+            <!-- Token Purchase Section -->
+            <div class="section">
+                <h2>💰 Buy Game Tokens (GT)</h2>
+                <div class="form-group">
+                    <label for="usdt-amount">USDT Amount:</label>
+                    <input type="number" id="usdt-amount" placeholder="Enter USDT amount" step="0.000001" min="0.000001">
+                </div>
+                <div class="form-group">
+                    <label for="gt-amount">GT Amount (calculated):</label>
+                    <input type="text" id="gt-amount" readonly>
+                </div>
+                <button class="btn" onclick="buyTokens()" id="buy-btn" disabled>Buy GT Tokens</button>
+                <div id="purchase-status"></div>
+            </div>
+            
+            <!-- Balance Display -->
+            <div class="section">
+                <h2>💎 Your Balance</h2>
+                <div class="balance-display" id="gt-balance">0 GT</div>
+                <button class="btn" onclick="refreshBalance()">Refresh Balance</button>
+            </div>
+            
+            <!-- Match Management -->
+            <div class="grid">
+                <div class="card">
+                    <h3>🏆 Start Match</h3>
+                    <div class="form-group">
+                        <label for="match-id">Match ID:</label>
+                        <input type="text" id="match-id" placeholder="Enter unique match ID">
+                    </div>
+                    <div class="form-group">
+                        <label for="player1">Player 1 Address:</label>
+                        <input type="text" id="player1" placeholder="Player 1 wallet address">
+                    </div>
+                    <div class="form-group">
+                        <label for="player2">Player 2 Address:</label>
+                        <input type="text" id="player2" placeholder="Player 2 wallet address">
+                    </div>
+                    <div class="form-group">
+                        <label for="stake-amount">Stake Amount (GT):</label>
+                        <input type="number" id="stake-amount" placeholder="Enter stake amount" step="0.000000000000000001" min="0.000000000000000001">
+                    </div>
+                    <button class="btn" onclick="startMatch()">Start Match</button>
+                    <div id="start-match-status"></div>
+                </div>
+                
+                <div class="card">
+                    <h3>🎯 Submit Result</h3>
+                    <div class="form-group">
+                        <label for="result-match-id">Match ID:</label>
+                        <input type="text" id="result-match-id" placeholder="Enter match ID">
+                    </div>
+                    <div class="form-group">
+                        <label for="winner">Winner Address:</label>
+                        <input type="text" id="winner" placeholder="Winner's wallet address">
+                    </div>
+                    <button class="btn" onclick="submitResult()">Submit Result</button>
+                    <div id="submit-result-status"></div>
+                </div>
+            </div>
+            
+            <!-- Leaderboard -->
+            <div class="section">
+                <h2>🏅 Leaderboard</h2>
+                <button class="btn" onclick="refreshLeaderboard()">Refresh Leaderboard</button>
+                <div id="leaderboard" class="leaderboard">
+                    <div class="loading">Loading leaderboard...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.ethers.io/lib/ethers-5.7.2.umd.min.js"></script>
+    <script>
+        // Global variables
+        let provider;
+        let signer;
+        let userAddress;
+        let contractAddresses = {};
+        
+        // Contract ABIs (simplified)
+        const TOKEN_STORE_ABI = [
+            "function buy(uint256 usdtAmount) external",
+            "function gtPerUsdt() external view returns (uint256)"
+        ];
+        
+        const GAME_TOKEN_ABI = [
+            "function balanceOf(address account) external view returns (uint256)",
+            "function decimals() external view returns (uint8)",
+            "function approve(address spender, uint256 amount) external returns (bool)"
+        ];
+        
+        const PLAY_GAME_ABI = [
+            "function stake(bytes32 matchId) external"
+        ];
+        
+        // Initialize the dApp
+        async function init() {
+            try {
+                // Check if MetaMask is installed
+                if (typeof window.ethereum === 'undefined') {
+                    showStatus('Please install MetaMask to use this dApp', 'error');
+                    return;
+                }
+                
+                // Set up provider
+                provider = new ethers.providers.Web3Provider(window.ethereum);
+                
+                // Load contract addresses from backend
+                await loadContractAddresses();
+                
+                // Check if already connected
+                const accounts = await provider.listAccounts();
+                if (accounts.length > 0) {
+                    await connectWallet();
+                }
+                
+                // Load initial data
+                await refreshLeaderboard();
+                
+            } catch (error) {
+                console.error('Initialization error:', error);
+                showStatus('Failed to initialize dApp', 'error');
+            }
+        }
+        
+        // Load contract addresses from backend
+        async function loadContractAddresses() {
+            try {
+                const response = await fetch('http://localhost:3000/health');
+                const data = await response.json();
+                console.log('Backend health check:', data);
+            } catch (error) {
+                console.error('Backend not available:', error);
+                showStatus('Backend API not available. Please start the backend server.', 'error');
+            }
+        }
+        
+        // Connect wallet
+        async function connectWallet() {
+            try {
+                if (!provider) {
+                    provider = new ethers.providers.Web3Provider(window.ethereum);
+                }
+                
+                // Request account access
+                const accounts = await provider.send("eth_requestAccounts", []);
+                userAddress = accounts[0];
+                signer = provider.getSigner();
+                
+                // Update UI
+                document.getElementById('wallet-info').style.display = 'block';
+                document.getElementById('connect-wallet').style.display = 'none';
+                document.getElementById('wallet-address').textContent = userAddress;
+                
+                // Enable buttons
+                document.getElementById('buy-btn').disabled = false;
+                
+                // Load user's balance
+                await refreshBalance();
+                
+                showStatus('Wallet connected successfully!', 'success');
+                
+            } catch (error) {
+                console.error('Wallet connection error:', error);
+                showStatus('Failed to connect wallet', 'error');
+            }
+        }
+        
+        // Disconnect wallet
+        function disconnectWallet() {
+            userAddress = null;
+            signer = null;
+            
+            document.getElementById('wallet-info').style.display = 'none';
+            document.getElementById('connect-wallet').style.display = 'block';
+            document.getElementById('buy-btn').disabled = true;
+            document.getElementById('gt-balance').textContent = '0 GT';
+            
+            showStatus('Wallet disconnected', 'info');
+        }
+        
+        // Buy tokens
+        async function buyTokens() {
+            try {
+                const usdtAmount = document.getElementById('usdt-amount').value;
+                if (!usdtAmount || usdtAmount <= 0) {
+                    showStatus('Please enter a valid USDT amount', 'error');
+                    return;
+                }
+                
+                showStatus('Processing purchase...', 'info');
+                
+                // Note: In a real implementation, this would interact with the TokenStore contract
+                // For this demo, we'll simulate the purchase
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                
+                showStatus('Purchase completed successfully!', 'success');
+                document.getElementById('usdt-amount').value = '';
+                document.getElementById('gt-amount').value = '';
+                
+                // Refresh balance
+                await refreshBalance();
+                
+            } catch (error) {
+                console.error('Purchase error:', error);
+                showStatus('Purchase failed: ' + error.message, 'error');
+            }
+        }
+        
+        // Calculate GT amount based on USDT input
+        document.getElementById('usdt-amount').addEventListener('input', function() {
+            const usdtAmount = parseFloat(this.value) || 0;
+            const gtAmount = usdtAmount; // 1:1 ratio for demo
+            document.getElementById('gt-amount').value = gtAmount.toFixed(18);
+        });
+        
+        // Refresh GT balance
+        async function refreshBalance() {
+            if (!userAddress) return;
+            
+            try {
+                // In a real implementation, this would call the GameToken contract
+                // For demo purposes, we'll show a mock balance
+                const mockBalance = Math.random() * 100;
+                document.getElementById('gt-balance').textContent = mockBalance.toFixed(6) + ' GT';
+                
+            } catch (error) {
+                console.error('Balance refresh error:', error);
+                showStatus('Failed to refresh balance', 'error');
+            }
+        }
+        
+        // Start match
+        async function startMatch() {
+            try {
+                const matchId = document.getElementById('match-id').value;
+                const player1 = document.getElementById('player1').value;
+                const player2 = document.getElementById('player2').value;
+                const stake = document.getElementById('stake-amount').value;
+                
+                if (!matchId || !player1 || !player2 || !stake) {
+                    showStatus('Please fill in all fields', 'error');
+                    return;
+                }
+                
+                if (player1 === player2) {
+                    showStatus('Player 1 and Player 2 must be different', 'error');
+                    return;
+                }
+                
+                showStatus('Creating match...', 'info');
+                
+                // Call backend API
+                const response = await fetch('http://localhost:3000/match/start', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        matchId,
+                        player1,
+                        player2,
+                        stake: parseFloat(stake)
+                    })
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    showStatus('Match created successfully!', 'success');
+                    console.log('Match created:', result);
+                    
+                    // Clear form
+                    document.getElementById('match-id').value = '';
+                    document.getElementById('player1').value = '';
+                    document.getElementById('player2').value = '';
+                    document.getElementById('stake-amount').value = '';
+                    
+                } else {
+                    const error = await response.json();
+                    showStatus('Failed to create match: ' + error.error, 'error');
+                }
+                
+            } catch (error) {
+                console.error('Start match error:', error);
+                showStatus('Failed to start match: ' + error.message, 'error');
+            }
+        }
+        
+        // Submit result
+        async function submitResult() {
+            try {
+                const matchId = document.getElementById('result-match-id').value;
+                const winner = document.getElementById('winner').value;
+                
+                if (!matchId || !winner) {
+                    showStatus('Please fill in all fields', 'error');
+                    return;
+                }
+                
+                showStatus('Submitting result...', 'info');
+                
+                // Call backend API
+                const response = await fetch('http://localhost:3000/match/result', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        matchId,
+                        winner
+                    })
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    showStatus('Result submitted successfully!', 'success');
+                    console.log('Result submitted:', result);
+                    
+                    // Clear form
+                    document.getElementById('result-match-id').value = '';
+                    document.getElementById('winner').value = '';
+                    
+                } else {
+                    const error = await response.json();
+                    showStatus('Failed to submit result: ' + error.error, 'error');
+                }
+                
+            } catch (error) {
+                console.error('Submit result error:', error);
+                showStatus('Failed to submit result: ' + error.message, 'error');
+            }
+        }
+        
+        // Refresh leaderboard
+        async function refreshLeaderboard() {
+            try {
+                const response = await fetch('http://localhost:3001/leaderboard');
+                if (response.ok) {
+                    const data = await response.json();
+                    displayLeaderboard(data.leaderboard);
+                } else {
+                    document.getElementById('leaderboard').innerHTML = '<div class="loading">Failed to load leaderboard</div>';
+                }
+            } catch (error) {
+                console.error('Leaderboard error:', error);
+                document.getElementById('leaderboard').innerHTML = '<div class="loading">Leaderboard not available</div>';
+            }
+        }
+        
+        // Display leaderboard
+        function displayLeaderboard(leaderboard) {
+            const container = document.getElementById('leaderboard');
+            
+            if (!leaderboard || leaderboard.length === 0) {
+                container.innerHTML = '<div class="loading">No players found</div>';
+                return;
+            }
+            
+            let html = '';
+            leaderboard.forEach((player, index) => {
+                const rank = index + 1;
+                const shortAddress = player.address.substring(0, 6) + '...' + player.address.substring(38);
+                
+                html += `
+                    <div class="leaderboard-item">
+                        <div class="rank">#${rank}</div>
+                        <div class="address">${shortAddress}</div>
+                        <div class="stats">
+                            <div class="wins">${player.total_wins} wins</div>
+                            <div class="gt-won">${parseFloat(player.total_gt_won).toFixed(6)} GT</div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            container.innerHTML = html;
+        }
+        
+        // Show status message
+        function showStatus(message, type) {
+            const statusDiv = document.createElement('div');
+            statusDiv.className = `status ${type}`;
+            statusDiv.textContent = message;
+            
+            // Remove existing status messages
+            const existingStatus = document.querySelectorAll('.status');
+            existingStatus.forEach(s => s.remove());
+            
+            // Add new status message
+            document.querySelector('.main-content').appendChild(statusDiv);
+            
+            // Auto-remove after 5 seconds
+            setTimeout(() => {
+                statusDiv.remove();
+            }, 5000);
+        }
+        
+        // Initialize when page loads
+        window.addEventListener('load', init);
+        
+        // Handle MetaMask account changes
+        if (window.ethereum) {
+            window.ethereum.on('accountsChanged', function (accounts) {
+                if (accounts.length === 0) {
+                    disconnectWallet();
+                } else {
+                    connectWallet();
+                }
+            });
+        }
+    </script>
+</body>
+</html>

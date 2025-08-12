@@ -1,0 +1,45 @@
+
+
+### ## 1. The Big Picture: What is the Goal of "Trix"?
+
+[cite_start]The main goal of Trix is to **create a trustless betting system for PvP gamers**[cite: 63, 65].
+
+Currently, if two players want to bet on the outcome of their match, they have to trust each other to pay up. Trix removes this need for trust. [cite_start]It uses smart contracts to automatically lock up the players' stakes and guarantees that the entire pot is sent to the winner[cite: 66, 75]. [cite_start]It also provides a simple way for players to get the required game tokens using a common stablecoin, USDT[cite: 66].
+
+***
+
+### ## 2. The Core Components & Their Jobs
+
+The system is built from four key parts. You should know what each one does.
+
+* [cite_start]**GameToken (GT):** This is the game's currency, an ERC-20 token used for betting[cite: 89, 151].
+* **TokenStore:** This is the "shop." [cite_start]It's a smart contract that sells `GT` to players in exchange for `USDT`[cite: 70, 88]. [cite_start]It is the **only** thing that can create new `GT`[cite: 89, 112].
+* **PlayGame:** This is the "referee" and "bank." [cite_start]It's a smart contract that holds both players' stakes in **escrow** during the match and pays out the winnings[cite: 92, 152].
+* [cite_start]**API Gateway:** This is the "bridge" between the off-chain game server and the on-chain smart contracts[cite: 93, 153]. This is a critical component.
+
+
+***
+
+### ## 3. The End-to-End Flow (The Lifecycle of a Stake)
+
+This is the most important flow to understand. If you understand this, you understand the whole system.
+
+1.  **Get Currency:** A player first needs `GT`. They interact with the **`TokenStore`** contract, sending it `USDT`. [cite_start]The `TokenStore` then mints the correct amount of `GT` and sends it to the player's wallet[cite: 97, 99]. [cite_start]The rate is fixed at 1 USDT for 1 GT[cite: 77].
+2.  [cite_start]**Place the Bet:** Before the match, both Player A and Player B call the **`PlayGame`** contract to stake their `GT`[cite: 101, 132]. The `PlayGame` contract now holds both stakes in escrow.
+3.  [cite_start]**Play the Game:** The actual game is played **off-chain** on a normal game server[cite: 103, 134]. This is for performance and speed. The blockchain is not involved during gameplay.
+4.  **Report the Winner:** The game server determines the winner. [cite_start]It then communicates this result to the **`API Gateway`**[cite: 135]. [cite_start]The `API Gateway` is the only entity trusted to submit the winner's address to the `PlayGame` smart contract[cite: 75, 124].
+5.  [cite_start]**Claim the Prize:** The **`PlayGame`** contract automatically verifies the winner and transfers the entire staked amount (100% of the pot) to the winner's wallet[cite: 82, 107].
+
+***
+
+### ## 4. Key Notes for Your Q&A Round
+
+These are the facts you should write down and memorize.
+
+* [cite_start]**What is the game token?** Game Token, or `GT`[cite: 151].
+* [cite_start]**What do you use to buy it?** `USDT`[cite: 70].
+* **How many smart contracts are there?** Three main ones: `GameToken`, `TokenStore`, and `PlayGame`.
+* [cite_start]**Who can create new GT?** Only the `TokenStore` contract[cite: 89, 112].
+* [cite_start]**Where is the game played?** Off-chain, on a regular game server[cite: 103].
+* [cite_start]**What is the API Gateway's job?** To be the trusted messenger that tells the smart contract who won the off-chain game[cite: 153].
+* [cite_start]**What does the winner receive?** 100% of the total amount staked by both players[cite: 82].

@@ -1,0 +1,37 @@
+{
+  "name": "gaming-staking-dapp",
+  "version": "1.0.0",
+  "description": "Decentralized gaming staking and reward system",
+  "main": "index.js",
+  "scripts": {
+    "compile": "hardhat compile",
+    "test": "hardhat test",
+    "deploy": "hardhat run scripts/deploy.js --network localhost",
+    "node": "hardhat node",
+    "backend": "node backend/server.js",
+    "indexer": "node indexer/indexer.js",
+    "dev": "concurrently \"npm run node\" \"npm run backend\" \"npm run indexer\""
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^4.9.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "ethers": "^6.8.0",
+    "express": "^4.18.2",
+    "mongodb": "^6.18.0"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^3.0.0",
+    "concurrently": "^8.2.0",
+    "hardhat": "^2.17.0"
+  },
+  "keywords": [
+    "blockchain",
+    "ethereum",
+    "gaming",
+    "staking",
+    "dapp"
+  ],
+  "author": "",
+  "license": "MIT"
+}
