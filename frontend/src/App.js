@@ -26,6 +26,16 @@ function App() {
     winner: ''
   });
 
+  // Token purchase form state
+  const [purchaseForm, setPurchaseForm] = useState({
+    usdtAmount: ''
+  });
+
+  // Add USDT form state
+  const [addUsdtForm, setAddUsdtForm] = useState({
+    amount: '100'
+  });
+
   // Connect wallet
   const connectWallet = async () => {
     try {
@@ -90,6 +100,54 @@ function App() {
     }
   };
 
+  // Add dummy USDT to wallet
+  const addDummyUsdt = async (e) => {
+    e.preventDefault();
+    if (!account) {
+      setMessage('Please connect your wallet first');
+      return;
+    }
+    
+    try {
+      setLoading(true);
+      const response = await axios.post('/add-dummy-usdt', {
+        address: account,
+        amount: addUsdtForm.amount
+      });
+      setMessage(`USDT added: ${response.data.message}`);
+      setAddUsdtForm({ amount: '100' });
+    } catch (error) {
+      setMessage('Error adding USDT: ' + (error.response?.data?.error || error.message));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Purchase GT tokens with USDT
+  const purchaseGtTokens = async (e) => {
+    e.preventDefault();
+    if (!account) {
+      setMessage('Please connect your wallet first');
+      return;
+    }
+    
+    try {
+      setLoading(true);
+      const response = await axios.post('/purchase', {
+        address: account,
+        usdtAmount: purchaseForm.usdtAmount
+      });
+      setMessage(`Purchase successful: ${response.data.message}`);
+      setPurchaseForm({ usdtAmount: '' });
+      // Refresh balance after purchase
+      await getBalance();
+    } catch (error) {
+      setMessage('Error purchasing GT: ' + (error.response?.data?.error || error.message));
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Start a match
   const startMatch = async (e) => {
     e.preventDefault();
@@ -104,7 +162,7 @@ function App() {
       setMessage(`Match started: ${response.data.message}`);
       setMatchForm({ matchId: '', player1: '', player2: '', stake: '' });
     } catch (error) {
-      setMessage('Error starting match: ' + error.message);
+      setMessage('Error starting match: ' + (error.response?.data?.error || error.message));
     } finally {
       setLoading(false);
     }
@@ -124,7 +182,7 @@ function App() {
       setMessage(`Result submitted: ${response.data.message}`);
       setResultForm({ matchId: '', winner: '' });
     } catch (error) {
-      setMessage('Error submitting result: ' + error.message);
+      setMessage('Error submitting result: ' + (error.response?.data?.error || error.message));
     } finally {
       setLoading(false);
     }
@@ -151,6 +209,20 @@ function App() {
   const handleResultFormChange = (e) => {
     setResultForm({
       ...resultForm,
+      [e.target.name]: e.target.value
+    });
+  };
+
+  const handlePurchaseFormChange = (e) => {
+    setPurchaseForm({
+      ...purchaseForm,
+      [e.target.name]: e.target.value
+    });
+  };
+
+  const handleAddUsdtFormChange = (e) => {
+    setAddUsdtForm({
+      ...addUsdtForm,
       [e.target.name]: e.target.value
     });
   };
@@ -197,11 +269,11 @@ function App() {
           )}
         </section>
 
-        {/* Balance and Rate */}
+        {/* Token Management */}
         {account && (
           <>
             <section className="section">
-              <h2>💰 Token Information</h2>
+              <h2>💰 Token Management</h2>
               <div className="grid-2">
                 <div>
                   <p><strong>GT Balance:</strong> {balance}</p>
@@ -215,6 +287,50 @@ function App() {
                   </button>
                 </div>
               </div>
+            </section>
+
+            {/* Add Dummy USDT */}
+            <section className="section">
+              <h2>💵 Add Dummy USDT</h2>
+              <form onSubmit={addDummyUsdt}>
+                <div className="form-row">
+                  <input
+                    type="number"
+                    name="amount"
+                    placeholder="USDT Amount"
+                    value={addUsdtForm.amount}
+                    onChange={handleAddUsdtFormChange}
+                    step="0.01"
+                    min="0"
+                    required
+                  />
+                  <button type="submit" disabled={loading} className="btn btn-primary">
+                    {loading ? 'Adding...' : 'Add USDT'}
+                  </button>
+                </div>
+              </form>
+            </section>
+
+            {/* Purchase GT Tokens */}
+            <section className="section">
+              <h2>🔄 Purchase GT Tokens</h2>
+              <form onSubmit={purchaseGtTokens}>
+                <div className="form-row">
+                  <input
+                    type="number"
+                    name="usdtAmount"
+                    placeholder="USDT Amount to Spend"
+                    value={purchaseForm.usdtAmount}
+                    onChange={handlePurchaseFormChange}
+                    step="0.01"
+                    min="0"
+                    required
+                  />
+                  <button type="submit" disabled={loading} className="btn btn-success">
+                    {loading ? 'Purchasing...' : 'Buy GT Tokens'}
+                  </button>
+                </div>
+              </form>
             </section>
 
             {/* Match Management */}
