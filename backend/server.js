@@ -558,57 +558,103 @@ app.post('/match/start', async (req, res) => {
     }
 });
 
-// Submit match result
+// Submit match result (with preflight debug and optional dryRun)
 app.post('/match/result', async (req, res) => {
-    try {
-        const { matchId, winner } = req.body;
-        
-        // Validate input
-        if (!matchId || !winner) {
-            return res.status(400).json({ error: 'Missing required fields' });
-        }
-        if (!ethers.isAddress(winner)) {
-            return res.status(400).json({ error: 'winner must be a valid 0x address' });
-        }
-        
-        const winnerAddr = ethers.getAddress(winner);
-        const hashedMatchId = ethers.id(matchId);
-        
-        // Preflight: fetch match data for clearer errors
-        const matchData = await playGameContract.getMatch(hashedMatchId);
-        
-        if (matchData.player1 === ethers.ZeroAddress && matchData.player2 === ethers.ZeroAddress) {
-            return res.status(404).json({ error: 'Match not found (did you create this match with the same matchId?)' });
-        }
-        if (matchData.status !== 1) { // 0=PENDING, 1=STAKED, 2=SETTLED, 3=REFUNDED
-            return res.status(400).json({ error: 'Match is not staked by both players yet' });
-        }
-        if (winnerAddr !== ethers.getAddress(matchData.player1) && winnerAddr !== ethers.getAddress(matchData.player2)) {
-            return res.status(400).json({ error: 'Winner must be one of the match players' });
-        }
-        
-        // Add delay before transaction
-        console.log('Waiting 2 seconds before transaction...');
-        await delay(2000);
-        
-        // Commit result on blockchain with latest nonce
-        const tx = await createTransactionWithLatestNonce(playGameContract, 'commitResult', [hashedMatchId, winnerAddr]);
-        await tx.wait();
-        
-        res.json({
-            message: 'Match result committed successfully',
-            matchId,
-            hashedMatchId,
-            winner: winnerAddr,
-            transactionHash: tx.hash
-        });
-        
-    } catch (error) {
-        console.error('Error committing result:', error);
-        // Surface revert reasons and provider errors to the client
-        const msg = error?.shortMessage || error?.reason || error?.message || 'Failed to commit result';
-        res.status(500).json({ error: msg });
-    }
+	try {
+		const { matchId, winner, dryRun } = req.body || {};
+		
+		// Validate input
+		if (!matchId || !winner) {
+			return res.status(400).json({ error: 'Missing required fields' });
+		}
+		if (!ethers.isAddress(winner)) {
+			return res.status(400).json({ error: 'winner must be a valid 0x address' });
+		}
+		
+		const winnerAddr = ethers.getAddress(winner);
+		const hashedMatchId = ethers.id(matchId);
+		
+		// Preflight: fetch match data for clearer errors
+		const matchData = await playGameContract.getMatch(hashedMatchId);
+		
+		// Build preflight diagnostic info
+		const exists = !(matchData.player1 === ethers.ZeroAddress && matchData.player2 === ethers.ZeroAddress);
+		const statusCode = Number(matchData.status); // 0=PENDING, 1=STAKED, 2=SETTLED, 3=REFUNDED
+		const statusNames = ['PENDING', 'STAKED', 'SETTLED', 'REFUNDED'];
+		const status = statusNames[statusCode] || 'UNKNOWN';
+		const p1 = exists ? ethers.getAddress(matchData.player1) : ethers.ZeroAddress;
+		const p2 = exists ? ethers.getAddress(matchData.player2) : ethers.ZeroAddress;
+		const isParticipant = exists && (winnerAddr === p1 || winnerAddr === p2);
+		const p1Staked = Boolean(matchData.player1Staked);
+		const p2Staked = Boolean(matchData.player2Staked);
+		const bothPlayersStaked = p1Staked && p2Staked;
+		
+		let decision = 'NOT_READY';
+		let reason = '';
+		if (!exists) {
+			reason = 'Match not found';
+		} else if (!isParticipant) {
+			reason = 'Winner must be one of the match players';
+		} else if (statusCode !== 1) {
+			reason = `Match status is ${status}, must be STAKED`;
+		} else {
+			decision = 'READY';
+			reason = 'Both players staked and match is STAKED';
+		}
+		
+		const preflight = {
+			matchId,
+			hashedMatchId,
+			exists,
+			status,
+			statusCode,
+			player1: p1,
+			player2: p2,
+			winner: winnerAddr,
+			isParticipant,
+			player1Staked: p1Staked,
+			player2Staked: p2Staked,
+			bothPlayersStaked,
+			decision,
+			reason
+		};
+		
+		console.log('Result preflight:', preflight);
+		
+		// If dryRun, return the preflight only
+		if (dryRun) {
+			const httpCode = decision === 'READY' ? 200 : 400;
+			return res.status(httpCode).json({ preflight, note: 'dryRun=true, no transaction sent' });
+		}
+		
+		// Enforce readiness before sending transaction
+		if (decision !== 'READY') {
+			return res.status(400).json({ error: reason, preflight });
+		}
+		
+		// Add delay before transaction
+		console.log('Preflight passed. Waiting 2 seconds before transaction...');
+		await delay(2000);
+		
+		// Commit result on blockchain with latest nonce
+		const tx = await createTransactionWithLatestNonce(playGameContract, 'commitResult', [hashedMatchId, winnerAddr]);
+		await tx.wait();
+		
+		res.json({
+			message: 'Match result committed successfully',
+			matchId,
+			hashedMatchId,
+			winner: winnerAddr,
+			transactionHash: tx.hash,
+			preflight
+		});
+		
+	} catch (error) {
+		console.error('Error committing result:', error);
+		// Surface revert reasons and provider errors to the client
+		const msg = error?.shortMessage || error?.reason || error?.message || 'Failed to commit result';
+		res.status(500).json({ error: msg });
+	}
 });
 
 // Get match information
