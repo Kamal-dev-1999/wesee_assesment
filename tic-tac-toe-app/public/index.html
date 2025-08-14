@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Tic‑Tac‑Toe dApp</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header>
+      <h1>Tic‑Tac‑Toe</h1>
+      <div id="net">Sepolia</div>
+    </header>
+    <main>
+      <section id="wallet">
+        <h2>Wallet</h2>
+        <button id="connectBtn">Connect Wallet</button>
+        <div class="kv"><span>Address</span><code id="addr">—</code></div>
+        <div class="kv"><span>GT Balance</span><code id="gtBalance">—</code></div>
+      </section>
+      <section id="matchmake" class="hidden">
+        <h2>Matchmaking</h2>
+        <div class="row">
+          <label>Stake</label>
+          <input id="stakeInput" type="number" min="1" step="1" value="10" />
+          <button id="findBtn">Find Match</button>
+        </div>
+        <div class="hint">On-chain approve + stake would trigger after match found.</div>
+      </section>
+      <section id="staking" class="hidden">
+        <h2>Staking</h2>
+        <div class="meta">
+          <div><b>Match ID</b> <code id="stakeMatchId">—</code></div>
+          <div><b>Stake Amount</b> <span id="stakeAmount">—</span> GT</div>
+          <div><b>Status</b> <span id="stakeStatus">Waiting for match creation...</span></div>
+        </div>
+        <div class="row">
+          <button id="approveBtn" disabled>Approve GT</button>
+          <button id="stakeBtn" disabled>Stake GT</button>
+        </div>
+        <div class="hint">You must approve and stake your GT tokens to start the game.</div>
+      </section>
+      <section id="game" class="hidden">
+        <h2>Game</h2>
+        <div class="meta">
+          <div><b>Match ID</b> <code id="mid">—</code></div>
+          <div><b>You Are</b> <span id="meAs">—</span></div>
+          <div><b>Turn</b> <span id="turn">—</span></div>
+        </div>
+        <div id="board" class="board">
+          <button data-i="0"></button><button data-i="1"></button><button data-i="2"></button>
+          <button data-i="3"></button><button data-i="4"></button><button data-i="5"></button>
+          <button data-i="6"></button><button data-i="7"></button><button data-i="8"></button>
+        </div>
+      </section>
+      <section id="log">
+        <h2>Status</h2>
+        <textarea id="logBox" readonly></textarea>
+      </section>
+    </main>
+    <script src="/socket.io/socket.io.js"></script>
+    <script type="module" src="./client.js"></script>
+  </body>
+  </html>
+

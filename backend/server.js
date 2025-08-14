@@ -10,6 +10,7 @@ console.log('BACKEND_PRIVATE_KEY:', process.env.BACKEND_PRIVATE_KEY ? 'LOADED' :
 console.log('PLAY_GAME_ADDRESS:', process.env.PLAY_GAME_ADDRESS);
 console.log('TOKEN_STORE_ADDRESS:', process.env.TOKEN_STORE_ADDRESS);
 console.log('GAME_TOKEN_ADDRESS:', process.env.GAME_TOKEN_ADDRESS);
+console.log('NETWORK:', process.env.RPC_URL?.includes('sepolia') ? 'SEPOLIA' : 'LOCAL');
 
 const app = express();
 const PORT = process.env.BACKEND_PORT || 3000;
@@ -49,10 +50,10 @@ const GAME_TOKEN_ABI = [
 ];
 
 const MOCK_USDT_ABI = [
-    "function transfer(address to, uint256 amount) external returns (bool)",
-    "function balanceOf(address account) external view returns (uint256)",
-    "function approve(address spender, uint256 amount) external returns (bool)",
-    "function allowance(address owner, address spender) external view returns (uint256)"
+	"function transfer(address to, uint256 amount) external returns (bool)",
+	"function balanceOf(address account) external view returns (uint256)",
+	"function approve(address spender, uint256 amount) external returns (bool)",
+	"function allowance(address owner, address spender) external view returns (uint256)"
 ];
 
 // Initialize provider and wallet
@@ -78,115 +79,120 @@ const gameTokenContract = new ethers.Contract(
     wallet
 );
 
+// Resolve USDT address: prefer env MOCK_USDT_ADDRESS if set; fallback to known Sepolia USDT on Sepolia
+const isSepolia = process.env.RPC_URL?.includes('sepolia');
+const usdtAddress = process.env.MOCK_USDT_ADDRESS || (isSepolia ? '0x7169D38820dfd117C3FA1fDf4b2d1a6f6Ba9aa8B' : process.env.MOCK_USDT_ADDRESS);
+console.log('USDT address in use:', usdtAddress);
+
 const mockUSDTContract = new ethers.Contract(
-    process.env.MOCK_USDT_ADDRESS,
-    MOCK_USDT_ABI,
-    wallet
+	usdtAddress,
+	MOCK_USDT_ABI,
+	wallet
 );
 
 // Verify backend is authorized
 async function verifyAuthorization() {
+	try {
+		console.log('🔍 Checking PlayGame contract authorization...');
+		console.log('Contract address:', process.env.PLAY_GAME_ADDRESS);
+		console.log('Backend wallet address:', wallet.address);
+		
+		// First, check if the contract exists and is deployed
+		const code = await provider.getCode(process.env.PLAY_GAME_ADDRESS);
+		if (code === '0x') {
+			console.error('❌ PlayGame contract not deployed at the specified address!');
+			console.error('Please run npm run deploy to deploy the contracts');
+			process.exit(1);
+		}
+		
+		console.log('✅ PlayGame contract found at address');
+		
+		// Try to get the owner
     try {
-        console.log('🔍 Checking PlayGame contract authorization...');
-        console.log('Contract address:', process.env.PLAY_GAME_ADDRESS);
-        console.log('Backend wallet address:', wallet.address);
-        
-        // First, check if the contract exists and is deployed
-        const code = await provider.getCode(process.env.PLAY_GAME_ADDRESS);
-        if (code === '0x') {
-            console.error('❌ PlayGame contract not deployed at the specified address!');
-            console.error('Please run npm run deploy to deploy the contracts');
+        const owner = await playGameContract.owner();
+			console.log('Contract owner:', owner);
+			console.log('Backend wallet:', wallet.address);
+			
+        if (owner !== wallet.address) {
+				console.error("❌ Backend is not authorized to operate PlayGame contract!");
+				console.error("Expected owner:", wallet.address);
+				console.error("Actual owner:", owner);
+				console.error("Please make sure you're using the correct private key");
+				process.exit(1);
+			}
+			console.log("✅ Backend authorization verified");
+		} catch (ownerError) {
+			console.error('❌ Error calling owner() function:', ownerError.message);
+			console.log('🔧 This might mean the contract was not deployed correctly');
+			console.log('🔧 Or there might be an ABI mismatch');
+			console.log('🔧 Trying alternative approach...');
+			
+			// Try to call a simple function to see if contract is working
+			try {
+				const gameTokenAddress = await playGameContract.gameToken();
+				console.log('✅ Contract is working, gameToken address:', gameTokenAddress);
+				console.log('⚠️  Skipping owner verification for now');
+				console.log('⚠️  Make sure the backend private key matches the deployer');
+			} catch (gameTokenError) {
+				console.error('❌ Contract is not responding correctly');
+				console.error('Please re-deploy the contracts: npm run deploy');
             process.exit(1);
         }
-        
-        console.log('✅ PlayGame contract found at address');
-        
-        // Try to get the owner
-        try {
-            const owner = await playGameContract.owner();
-            console.log('Contract owner:', owner);
-            console.log('Backend wallet:', wallet.address);
-            
-            if (owner !== wallet.address) {
-                console.error("❌ Backend is not authorized to operate PlayGame contract!");
-                console.error("Expected owner:", wallet.address);
-                console.error("Actual owner:", owner);
-                console.error("Please make sure you're using the correct private key");
-                process.exit(1);
-            }
-            console.log("✅ Backend authorization verified");
-        } catch (ownerError) {
-            console.error('❌ Error calling owner() function:', ownerError.message);
-            console.log('🔧 This might mean the contract was not deployed correctly');
-            console.log('🔧 Or there might be an ABI mismatch');
-            console.log('🔧 Trying alternative approach...');
-            
-            // Try to call a simple function to see if contract is working
-            try {
-                const gameTokenAddress = await playGameContract.gameToken();
-                console.log('✅ Contract is working, gameToken address:', gameTokenAddress);
-                console.log('⚠️  Skipping owner verification for now');
-                console.log('⚠️  Make sure the backend private key matches the deployer');
-            } catch (gameTokenError) {
-                console.error('❌ Contract is not responding correctly');
-                console.error('Please re-deploy the contracts: npm run deploy');
-                process.exit(1);
-            }
-        }
+		}
     } catch (error) {
-        console.error("❌ Failed to verify authorization:", error);
-        console.error("Please check your .env file and contract deployment");
+		console.error("❌ Failed to verify authorization:", error);
+		console.error("Please check your .env file and contract deployment");
         process.exit(1);
     }
 }
 
 // Helper function to add delay
 function delay(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
+	return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 // Helper function to get latest nonce and create transaction with it
 async function createTransactionWithLatestNonce(contract, methodName, args) {
-    // Get the LATEST nonce from the blockchain
-    const latestNonce = await provider.getTransactionCount(wallet.address, "latest");
-    console.log(`Using latest nonce: ${latestNonce}`);
-    
-    // Build transaction object with fresh nonce
-    const tx = await contract[methodName].populateTransaction(...args, {
-        nonce: latestNonce
-    });
-    
-    // Sign and send the transaction
-    const signedTx = await wallet.sendTransaction(tx);
-    return signedTx;
+	// Get the LATEST nonce from the blockchain
+	const latestNonce = await provider.getTransactionCount(wallet.address, "latest");
+	console.log(`Using latest nonce: ${latestNonce}`);
+	
+	// Build transaction object with fresh nonce
+	const tx = await contract[methodName].populateTransaction(...args, {
+		nonce: latestNonce
+	});
+	
+	// Sign and send the transaction
+	const signedTx = await wallet.sendTransaction(tx);
+	return signedTx;
 }
 
 // Helper function to get latest nonce for deployer wallet
 async function createDeployerTransactionWithLatestNonce(contract, methodName, args, deployerWallet) {
-    // Get the LATEST nonce from the blockchain
-    const latestNonce = await provider.getTransactionCount(deployerWallet.address, "latest");
-    console.log(`Using latest nonce for deployer: ${latestNonce}`);
-    
-    // Build transaction object with fresh nonce
-    const tx = await contract[methodName].populateTransaction(...args, {
-        nonce: latestNonce
-    });
-    
-    // Sign and send the transaction
-    const signedTx = await deployerWallet.sendTransaction(tx);
-    return signedTx;
+	// Get the LATEST nonce from the blockchain
+	const latestNonce = await provider.getTransactionCount(deployerWallet.address, "latest");
+	console.log(`Using latest nonce for deployer: ${latestNonce}`);
+	
+	// Build transaction object with fresh nonce
+	const tx = await contract[methodName].populateTransaction(...args, {
+		nonce: latestNonce
+	});
+	
+	// Sign and send the transaction
+	const signedTx = await deployerWallet.sendTransaction(tx);
+	return signedTx;
 }
 
 // API Routes
 
 // Health check
 app.get('/health', (req, res) => {
-    res.json({
-        status: 'healthy',
-        timestamp: new Date().toISOString(),
-        network: process.env.RPC_URL,
-        backendAddress: wallet.address
-    });
+	res.json({
+		status: 'healthy',
+		timestamp: new Date().toISOString(),
+		network: process.env.RPC_URL,
+		backendAddress: wallet.address
+	});
 });
 
 // Get user's GT balance
@@ -223,203 +229,225 @@ app.get('/rate', async (req, res) => {
 
 // NEW: Add dummy USDT to user's wallet (for testing)
 app.post('/add-dummy-usdt', async (req, res) => {
-    try {
-        const { address, amount } = req.body;
-        
-        // Validate input
-        if (!address || !ethers.isAddress(address)) {
-            return res.status(400).json({ error: 'Invalid address' });
-        }
-        
-        const userAddr = ethers.getAddress(address);
-        const usdtAmount = ethers.parseUnits(amount || "100", 6); // Default 100 USDT
-        
-        // Get deployer account (account #0) to give USDT to user
-        const deployerPrivateKey = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
-        const deployerWallet = new ethers.Wallet(deployerPrivateKey, wallet.provider);
-        
-        const deployerUSDTContract = new ethers.Contract(process.env.MOCK_USDT_ADDRESS, MOCK_USDT_ABI, deployerWallet);
-        
-        // Check deployer's USDT balance
-        const deployerUSDTBalance = await deployerUSDTContract.balanceOf(deployerWallet.address);
-        console.log(`Deployer USDT balance: ${ethers.formatUnits(deployerUSDTBalance, 6)} USDT`);
-        
-        if (deployerUSDTBalance < usdtAmount) {
-            return res.status(400).json({ 
-                error: `Deployer has insufficient USDT. Balance: ${ethers.formatUnits(deployerUSDTBalance, 6)} USDT, trying to give: ${ethers.formatUnits(usdtAmount, 6)} USDT` 
-            });
-        }
-        
-        // Add delay and get fresh nonce
-        console.log('Waiting 2 seconds before transaction...');
-        await delay(2000);
-        
-        // Transfer USDT from deployer to user
-        const tx = await createDeployerTransactionWithLatestNonce(deployerUSDTContract, 'transfer', [userAddr, usdtAmount], deployerWallet);
-        await tx.wait();
-        
-        // Check new user USDT balance
-        const newUserUSDTBalance = await deployerUSDTContract.balanceOf(userAddr);
-        
-        res.json({
-            message: 'USDT added successfully',
-            address: userAddr,
-            usdtAmount: ethers.formatUnits(usdtAmount, 6),
-            newBalance: ethers.formatUnits(newUserUSDTBalance, 6),
-            transactionHash: tx.hash
-        });
-    } catch (error) {
-        console.error('Error adding dummy USDT:', error);
-        const msg = error?.reason || error?.message || 'Failed to add USDT';
-        res.status(500).json({ error: msg });
-    }
+	try {
+		const { address, amount } = req.body;
+		
+		// Validate input
+		if (!address || !ethers.isAddress(address)) {
+			return res.status(400).json({ error: 'Invalid address' });
+		}
+		
+		const userAddr = ethers.getAddress(address);
+		const usdtAmount = ethers.parseUnits(amount || "100", 6); // Default 100 USDT
+		
+		// On Sepolia, use backend wallet; on local, use Hardhat account #0
+		let deployerWallet, deployerUSDTContract;
+		
+		if (process.env.RPC_URL?.includes('sepolia')) {
+			// On Sepolia, backend wallet acts as deployer
+			deployerWallet = wallet;
+			deployerUSDTContract = mockUSDTContract;
+		} else {
+			// On local Hardhat, use account #0
+			const deployerPrivateKey = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
+			deployerWallet = new ethers.Wallet(deployerPrivateKey, wallet.provider);
+			deployerUSDTContract = new ethers.Contract(process.env.MOCK_USDT_ADDRESS, MOCK_USDT_ABI, deployerWallet);
+		}
+		
+		// Check deployer's USDT balance
+		const deployerUSDTBalance = await deployerUSDTContract.balanceOf(deployerWallet.address);
+		console.log(`Deployer USDT balance: ${ethers.formatUnits(deployerUSDTBalance, 6)} USDT`);
+		
+		if (deployerUSDTBalance < usdtAmount) {
+			return res.status(400).json({ 
+				error: `Deployer has insufficient USDT. Balance: ${ethers.formatUnits(deployerUSDTBalance, 6)} USDT, trying to give: ${ethers.formatUnits(usdtAmount, 6)} USDT` 
+			});
+		}
+		
+		// Add delay and get fresh nonce (longer on Sepolia)
+		const delayTime = process.env.RPC_URL?.includes('sepolia') ? 5000 : 2000;
+		console.log(`Waiting ${delayTime/1000} seconds before transaction...`);
+		await delay(delayTime);
+		
+		// Transfer USDT from deployer to user
+		const tx = await createDeployerTransactionWithLatestNonce(deployerUSDTContract, 'transfer', [userAddr, usdtAmount], deployerWallet);
+		await tx.wait();
+		
+		// Check new user USDT balance
+		const newUserUSDTBalance = await deployerUSDTContract.balanceOf(userAddr);
+		
+		res.json({
+			message: 'USDT added successfully',
+			address: userAddr,
+			usdtAmount: ethers.formatUnits(usdtAmount, 6),
+			newBalance: ethers.formatUnits(newUserUSDTBalance, 6),
+			transactionHash: tx.hash
+		});
+	} catch (error) {
+		console.error('Error adding dummy USDT:', error);
+		const msg = error?.reason || error?.message || 'Failed to add USDT';
+		res.status(500).json({ error: msg });
+	}
 });
 
 // NEW: Give USDT to backend (for testing)
 app.post('/give-backend-usdt', async (req, res) => {
-    try {
-        const { amount } = req.body;
-        
-        const usdtAmount = ethers.parseUnits(amount || "1000", 6); // Default 1000 USDT
-        
-        // Get deployer account (account #0) to give USDT to backend
-        const deployerPrivateKey = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
-        const deployerWallet = new ethers.Wallet(deployerPrivateKey, wallet.provider);
-        
-        const deployerUSDTContract = new ethers.Contract(process.env.MOCK_USDT_ADDRESS, MOCK_USDT_ABI, deployerWallet);
-        
-        // Check deployer's USDT balance
-        const deployerUSDTBalance = await deployerUSDTContract.balanceOf(deployerWallet.address);
-        console.log(`Deployer USDT balance: ${ethers.formatUnits(deployerUSDTBalance, 6)} USDT`);
-        
-        if (deployerUSDTBalance < usdtAmount) {
-            return res.status(400).json({ 
-                error: `Deployer has insufficient USDT. Balance: ${ethers.formatUnits(deployerUSDTBalance, 6)} USDT, trying to give: ${ethers.formatUnits(usdtAmount, 6)} USDT` 
-            });
-        }
-        
-        // Add delay and get fresh nonce
-        console.log('Waiting 2 seconds before transaction...');
-        await delay(2000);
-        
-        // Transfer USDT from deployer to backend
-        const tx = await createDeployerTransactionWithLatestNonce(deployerUSDTContract, 'transfer', [wallet.address, usdtAmount], deployerWallet);
-        await tx.wait();
-        
-        // Check new backend USDT balance
-        const newBackendUSDTBalance = await deployerUSDTContract.balanceOf(wallet.address);
-        
-        res.json({
-            message: 'USDT given to backend successfully',
-            backendAddress: wallet.address,
-            usdtAmount: ethers.formatUnits(usdtAmount, 6),
-            newBackendBalance: ethers.formatUnits(newBackendUSDTBalance, 6),
-            transactionHash: tx.hash
-        });
-    } catch (error) {
-        console.error('Error giving USDT to backend:', error);
-        const msg = error?.reason || error?.message || 'Failed to give USDT to backend';
-        res.status(500).json({ error: msg });
-    }
+	try {
+		const { amount } = req.body;
+		
+		const usdtAmount = ethers.parseUnits(amount || "1000", 6); // Default 1000 USDT
+		
+		// On Sepolia, use backend wallet; on local, use Hardhat account #0
+		let deployerWallet, deployerUSDTContract;
+		
+		if (process.env.RPC_URL?.includes('sepolia')) {
+			// On Sepolia, backend wallet acts as deployer
+			deployerWallet = wallet;
+			deployerUSDTContract = mockUSDTContract;
+		} else {
+			// On local Hardhat, use account #0
+			const deployerPrivateKey = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
+			deployerWallet = new ethers.Wallet(deployerPrivateKey, wallet.provider);
+			deployerUSDTContract = new ethers.Contract(process.env.MOCK_USDT_ADDRESS, MOCK_USDT_ABI, deployerWallet);
+		}
+		
+		// Check deployer's USDT balance
+		const deployerUSDTBalance = await deployerUSDTContract.balanceOf(deployerWallet.address);
+		console.log(`Deployer USDT balance: ${ethers.formatUnits(deployerUSDTBalance, 6)} USDT`);
+		
+		if (deployerUSDTBalance < usdtAmount) {
+			return res.status(400).json({ 
+				error: `Deployer has insufficient USDT. Balance: ${ethers.formatUnits(deployerUSDTBalance, 6)} USDT, trying to give: ${ethers.formatUnits(usdtAmount, 6)} USDT` 
+ 
+			});
+		}
+		
+		// Add delay and get fresh nonce (longer on Sepolia)
+		const delayTime = process.env.RPC_URL?.includes('sepolia') ? 5000 : 2000;
+		console.log(`Waiting ${delayTime/1000} seconds before transaction...`);
+		await delay(delayTime);
+		
+		// Transfer USDT from deployer to backend
+		const tx = await createDeployerTransactionWithLatestNonce(deployerUSDTContract, 'transfer', [wallet.address, usdtAmount], deployerWallet);
+		await tx.wait();
+		
+		// Check new backend USDT balance
+		const newBackendUSDTBalance = await deployerUSDTContract.balanceOf(wallet.address);
+		
+		res.json({
+			message: 'USDT given to backend successfully',
+			backendAddress: wallet.address,
+			usdtAmount: ethers.formatUnits(usdtAmount, 6),
+			newBackendBalance: ethers.formatUnits(newBackendUSDTBalance, 6),
+			transactionHash: tx.hash
+		});
+	} catch (error) {
+		console.error('Error giving USDT to backend:', error);
+		const msg = error?.reason || error?.message || 'Failed to give USDT to backend';
+		res.status(500).json({ error: msg });
+	}
 });
 
 // NEW: Purchase GT tokens with USDT (facilitates the purchase)
 app.post('/purchase', async (req, res) => {
-    try {
-        const { address, usdtAmount } = req.body;
-        
-        // Validate input
-        if (!address || !ethers.isAddress(address)) {
-            return res.status(400).json({ error: 'Invalid address' });
-        }
-        if (!usdtAmount || Number(usdtAmount) <= 0) {
-            return res.status(400).json({ error: 'Invalid USDT amount' });
-        }
-        
-        const userAddr = ethers.getAddress(address);
-        const usdtToSpend = ethers.parseUnits(usdtAmount.toString(), 6);
-        
-        // Check user's USDT balance
-        const userUSDTBalance = await mockUSDTContract.balanceOf(userAddr);
-        if (userUSDTBalance < usdtToSpend) {
-            return res.status(400).json({ 
-                error: `Insufficient USDT balance. User has ${ethers.formatUnits(userUSDTBalance, 6)} USDT, trying to spend ${ethers.formatUnits(usdtToSpend, 6)} USDT` 
-            });
-        }
-        
-        console.log(`Processing purchase for user ${userAddr}...`);
-        
-        // For testing purposes, we'll use a simplified approach
-        // We'll use the backend's own USDT to buy GT tokens through TokenStore
-        // This simulates the purchase process while respecting contract access controls
-        
-        // Check backend's USDT balance
-        const backendUSDTBalance = await mockUSDTContract.balanceOf(wallet.address);
-        if (backendUSDTBalance < usdtToSpend) {
-            return res.status(400).json({ 
-                error: `Backend has insufficient USDT. Balance: ${ethers.formatUnits(backendUSDTBalance, 6)} USDT, trying to spend: ${ethers.formatUnits(usdtToSpend, 6)} USDT` 
-            });
-        }
-        
-        // Add delay before transactions
-        console.log('Waiting 2 seconds before transaction...');
-        await delay(2000);
-        
-        // Check backend's USDT allowance for TokenStore
-        const allowance = await mockUSDTContract.allowance(wallet.address, process.env.TOKEN_STORE_ADDRESS);
-        console.log(`Backend USDT allowance for TokenStore: ${ethers.formatUnits(allowance, 6)} USDT`);
-        
-        // If allowance is insufficient, approve TokenStore to spend backend's USDT
-        if (allowance < usdtToSpend) {
-            console.log(`Approving TokenStore to spend ${ethers.formatUnits(usdtToSpend, 6)} USDT...`);
-            const approveTx = await createTransactionWithLatestNonce(mockUSDTContract, 'approve', [process.env.TOKEN_STORE_ADDRESS, usdtToSpend]);
-            await approveTx.wait();
-            console.log(`USDT approval successful`);
-            
-            // Add delay after approval
-            console.log('Waiting 2 seconds before transaction...');
-            await delay(2000);
-        }
+	try {
+		const { address, usdtAmount } = req.body;
+		
+		// Validate input
+		if (!address || !ethers.isAddress(address)) {
+			return res.status(400).json({ error: 'Invalid address' });
+		}
+		if (!usdtAmount || Number(usdtAmount) <= 0) {
+			return res.status(400).json({ error: 'Invalid USDT amount' });
+		}
+		
+		const userAddr = ethers.getAddress(address);
+		const usdtToSpend = ethers.parseUnits(usdtAmount.toString(), 6);
+		
+		// Check user's USDT balance
+		const userUSDTBalance = await mockUSDTContract.balanceOf(userAddr);
+		if (userUSDTBalance < usdtToSpend) {
+			return res.status(400).json({ 
+				error: `Insufficient USDT balance. User has ${ethers.formatUnits(userUSDTBalance, 6)} USDT, trying to spend ${ethers.formatUnits(usdtToSpend, 6)} USDT` 
+			});
+		}
+		
+		console.log(`Processing purchase for user ${userAddr}...`);
+		
+		// For testing purposes, we'll use a simplified approach
+		// We'll use the backend's own USDT to buy GT tokens through TokenStore
+		// This simulates the purchase process while respecting contract access controls
+		
+		// Check backend's USDT balance
+		const backendUSDTBalance = await mockUSDTContract.balanceOf(wallet.address);
+		if (backendUSDTBalance < usdtToSpend) {
+			return res.status(400).json({ 
+				error: `Backend has insufficient USDT. Balance: ${ethers.formatUnits(backendUSDTBalance, 6)} USDT, trying to spend: ${ethers.formatUnits(usdtToSpend, 6)} USDT` 
+			});
+		}
+		
+		// Add delay before transactions (longer on Sepolia)
+		const delayTime = process.env.RPC_URL?.includes('sepolia') ? 5000 : 2000;
+		console.log(`Waiting ${delayTime/1000} seconds before transaction...`);
+		await delay(delayTime);
+		
+		// Check backend's USDT allowance for TokenStore
+		const allowance = await mockUSDTContract.allowance(wallet.address, process.env.TOKEN_STORE_ADDRESS);
+		console.log(`Backend USDT allowance for TokenStore: ${ethers.formatUnits(allowance, 6)} USDT`);
+		
+		// If allowance is insufficient, approve TokenStore to spend backend's USDT
+		if (allowance < usdtToSpend) {
+			console.log(`Approving TokenStore to spend ${ethers.formatUnits(usdtToSpend, 6)} USDT...`);
+			const approveTx = await createTransactionWithLatestNonce(mockUSDTContract, 'approve', [process.env.TOKEN_STORE_ADDRESS, usdtToSpend]);
+			await approveTx.wait();
+			console.log(`USDT approval successful`);
+			
+			// Add delay after approval (longer on Sepolia)
+			const delayTime = process.env.RPC_URL?.includes('sepolia') ? 5000 : 2000;
+			console.log(`Waiting ${delayTime/1000} seconds before transaction...`);
+			await delay(delayTime);
+		}
 
-        // Backend buys GT tokens through TokenStore (which will mint to backend)
-        const buyTx = await createTransactionWithLatestNonce(tokenStoreContract, 'buy', [usdtToSpend]);
-        await buyTx.wait();
-        console.log(`Backend purchased GT tokens through TokenStore`);
-        
-        // Add delay after purchase
-        console.log('Waiting 2 seconds before transaction...');
-        await delay(2000);
-        
-        // Calculate GT amount (1:1 conversion rate)
-        // USDT has 6 decimals, GT has 18 decimals, so we need to convert properly
-        const gtAmount = ethers.parseEther(ethers.formatUnits(usdtToSpend, 6)); // Convert USDT amount to GT with proper decimals
-        
-        // Transfer GT tokens from backend to user
-        const transferGTx = await createTransactionWithLatestNonce(gameTokenContract, 'transfer', [userAddr, gtAmount]);
-        await transferGTx.wait();
-        console.log(`Transferred ${ethers.formatEther(gtAmount)} GT tokens to user ${userAddr}`);
-        
-        // Check user's new GT balance
-        const newGTBalance = await gameTokenContract.balanceOf(userAddr);
-        
-        res.json({
-            message: 'GT tokens purchased successfully',
-            address: userAddr,
-            usdtSpent: ethers.formatUnits(usdtToSpend, 6),
-            gtReceived: ethers.formatEther(gtAmount),
-            newGTBalance: ethers.formatEther(newGTBalance),
-            transactionHash: buyTx.hash,
-            note: 'Purchase completed via TokenStore using backend USDT (testing mode)'
-        });
-        
-    } catch (error) {
-        console.error('Error purchasing GT tokens:', error);
-        const msg = error?.reason || error?.message || 'Failed to purchase GT tokens';
-        res.status(500).json({ error: msg });
-    }
+		// Backend buys GT tokens through TokenStore (which will mint to backend)
+		const buyTx = await createTransactionWithLatestNonce(tokenStoreContract, 'buy', [usdtToSpend]);
+		await buyTx.wait();
+		console.log(`Backend purchased GT tokens through TokenStore`);
+		
+		// Add delay after purchase (longer on Sepolia)
+		const delayTime3 = process.env.RPC_URL?.includes('sepolia') ? 5000 : 2000;
+		console.log(`Waiting ${delayTime3/1000} seconds before transaction...`);
+		await delay(delayTime3);
+		
+		// Calculate GT amount (1:1 conversion rate)
+		// USDT has 6 decimals, GT has 18 decimals, so we need to convert properly
+		const gtAmount = ethers.parseEther(ethers.formatUnits(usdtToSpend, 6)); // Convert USDT amount to GT with proper decimals
+		
+		// Transfer GT tokens from backend to user
+		const transferGTx = await createTransactionWithLatestNonce(gameTokenContract, 'transfer', [userAddr, gtAmount]);
+		await transferGTx.wait();
+		console.log(`Transferred ${ethers.formatEther(gtAmount)} GT tokens to user ${userAddr}`);
+		
+		// Check user's new GT balance
+		const newGTBalance = await gameTokenContract.balanceOf(userAddr);
+		
+		res.json({
+			message: 'GT tokens purchased successfully',
+			address: userAddr,
+			usdtSpent: ethers.formatUnits(usdtToSpend, 6),
+			gtReceived: ethers.formatEther(gtAmount),
+			newGTBalance: ethers.formatEther(newGTBalance),
+			transactionHash: buyTx.hash,
+			note: 'Purchase completed via TokenStore using backend USDT (testing mode)'
+		});
+		
+	} catch (error) {
+		console.error('Error purchasing GT tokens:', error);
+		const msg = error?.reason || error?.message || 'Failed to purchase GT tokens';
+		res.status(500).json({ error: msg });
+	}
 });
 
-// Stake into a match (Hardhat testing only)
+// Stake into a match (Hardhat testing only on local, Sepolia requires user signature)
 app.post('/match/stake', async (req, res) => {
 	try {
 		const { matchId, player } = req.body;
@@ -428,6 +456,14 @@ app.post('/match/stake', async (req, res) => {
 		}
 		if (!ethers.isAddress(player)) {
 			return res.status(400).json({ error: 'player must be a valid 0x address' });
+		}
+
+		// Check if we're on Sepolia (where impersonation won't work)
+		if (process.env.RPC_URL?.includes('sepolia')) {
+			return res.status(400).json({ 
+				error: 'Staking on Sepolia requires user signature. This endpoint only works on local Hardhat network.',
+				note: 'For Sepolia, users should stake directly through their wallet or use a different approach'
+			});
 		}
 
 		const playerAddr = ethers.getAddress(player);
@@ -496,7 +532,7 @@ app.post('/match/stake', async (req, res) => {
 			stakeTx: stakeTx.hash,
 			matchStatus: statusNames[Number(updated.status)],
 			player1Staked: Boolean(updated.player1Staked),
-			player2Staked: Boolean(updated.player2Staked)
+			note: 'This endpoint only works on local Hardhat network'
 		});
 	} catch (error) {
 		console.error('Error staking:', error);
@@ -533,9 +569,10 @@ app.post('/match/start', async (req, res) => {
         // Hash the matchId to bytes32 format
         const hashedMatchId = ethers.id(matchId);
         
-        // Add delay before transaction
-        console.log('Waiting 2 seconds before transaction...');
-        await delay(2000);
+        // Add delay before transaction (longer on Sepolia)
+        const delayTime = process.env.RPC_URL?.includes('sepolia') ? 5000 : 2000;
+        console.log(`Waiting ${delayTime/1000} seconds before transaction...`);
+        await delay(delayTime);
         
         // Create match on blockchain with latest nonce
         const tx = await createTransactionWithLatestNonce(playGameContract, 'createMatch', [hashedMatchId, p1, p2, stakeWei]);
@@ -560,23 +597,23 @@ app.post('/match/start', async (req, res) => {
 
 // Submit match result (with preflight debug and optional dryRun)
 app.post('/match/result', async (req, res) => {
-	try {
+    try {
 		const { matchId, winner, dryRun } = req.body || {};
-		
-		// Validate input
-		if (!matchId || !winner) {
-			return res.status(400).json({ error: 'Missing required fields' });
-		}
-		if (!ethers.isAddress(winner)) {
-			return res.status(400).json({ error: 'winner must be a valid 0x address' });
-		}
-		
-		const winnerAddr = ethers.getAddress(winner);
-		const hashedMatchId = ethers.id(matchId);
-		
-		// Preflight: fetch match data for clearer errors
-		const matchData = await playGameContract.getMatch(hashedMatchId);
-		
+        
+        // Validate input
+        if (!matchId || !winner) {
+            return res.status(400).json({ error: 'Missing required fields' });
+        }
+        if (!ethers.isAddress(winner)) {
+            return res.status(400).json({ error: 'winner must be a valid 0x address' });
+        }
+        
+        const winnerAddr = ethers.getAddress(winner);
+        const hashedMatchId = ethers.id(matchId);
+        
+        // Preflight: fetch match data for clearer errors
+        const matchData = await playGameContract.getMatch(hashedMatchId);
+        
 		// Build preflight diagnostic info
 		const exists = !(matchData.player1 === ethers.ZeroAddress && matchData.player2 === ethers.ZeroAddress);
 		const statusCode = Number(matchData.status); // 0=PENDING, 1=STAKED, 2=SETTLED, 3=REFUNDED
@@ -632,29 +669,30 @@ app.post('/match/result', async (req, res) => {
 			return res.status(400).json({ error: reason, preflight });
 		}
 		
-		// Add delay before transaction
-		console.log('Preflight passed. Waiting 2 seconds before transaction...');
-		await delay(2000);
+		// Add delay before transaction (longer on Sepolia)
+		const delayTime = process.env.RPC_URL?.includes('sepolia') ? 5000 : 2000;
+		console.log(`Preflight passed. Waiting ${delayTime/1000} seconds before transaction...`);
+		await delay(delayTime);
 		
 		// Commit result on blockchain with latest nonce
 		const tx = await createTransactionWithLatestNonce(playGameContract, 'commitResult', [hashedMatchId, winnerAddr]);
-		await tx.wait();
-		
-		res.json({
-			message: 'Match result committed successfully',
-			matchId,
-			hashedMatchId,
-			winner: winnerAddr,
+        await tx.wait();
+        
+        res.json({
+            message: 'Match result committed successfully',
+            matchId,
+            hashedMatchId,
+            winner: winnerAddr,
 			transactionHash: tx.hash,
 			preflight
-		});
-		
-	} catch (error) {
-		console.error('Error committing result:', error);
-		// Surface revert reasons and provider errors to the client
-		const msg = error?.shortMessage || error?.reason || error?.message || 'Failed to commit result';
-		res.status(500).json({ error: msg });
-	}
+        });
+        
+    } catch (error) {
+        console.error('Error committing result:', error);
+        // Surface revert reasons and provider errors to the client
+        const msg = error?.shortMessage || error?.reason || error?.message || 'Failed to commit result';
+        res.status(500).json({ error: msg });
+    }
 });
 
 // Get match information
@@ -763,19 +801,22 @@ app.get('/match/summary/:matchId', async (req, res) => {
 			player2Staked,
 			bothPlayersStaked,
 			decision
-		});
-	} catch (error) {
+        });
+    } catch (error) {
 		console.error('Error getting match summary:', error);
 		const msg = error?.reason || error?.message || 'Failed to get match summary';
-		res.status(500).json({ error: msg });
-	}
+        res.status(500).json({ error: msg });
+    }
 });
 
 // Test endpoint
 app.get('/test', (req, res) => {
+    const isSepolia = process.env.RPC_URL?.includes('sepolia');
     res.json({
         message: 'Backend is working!',
         timestamp: new Date().toISOString(),
+        network: isSepolia ? 'SEPOLIA' : 'LOCAL',
+        note: isSepolia ? 'Running on Sepolia testnet - some features may require user wallet interaction' : 'Running on local Hardhat network',
         endpoints: [
             'GET /health',
             'GET /test',
@@ -786,7 +827,7 @@ app.get('/test', (req, res) => {
             'POST /purchase',
             'POST /match/start',
             'POST /match/result',
-            'POST /match/stake',
+            'POST /match/stake' + (isSepolia ? ' (Local only)' : ''),
             'GET /match/:matchId',
             'GET /match/summary/:matchId'
         ]

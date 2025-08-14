@@ -36,6 +36,24 @@ function App() {
     amount: '100'
   });
 
+  // NEW: Give backend USDT form state
+  const [backendUsdtForm, setBackendUsdtForm] = useState({
+    amount: '1000'
+  });
+
+  // NEW: Stake form state
+  const [stakeForm, setStakeForm] = useState({
+    matchId: '',
+    player: ''
+  });
+
+  // NEW: Match summary state
+  const [summaryMatchId, setSummaryMatchId] = useState('');
+  const [summaryData, setSummaryData] = useState(null);
+
+  // NEW: dry run toggle for result submission
+  const [dryRun, setDryRun] = useState(false);
+
   // Connect wallet
   const connectWallet = async () => {
     try {
@@ -123,6 +141,22 @@ function App() {
     }
   };
 
+  // NEW: Give backend USDT
+  const giveBackendUsdt = async (e) => {
+    e.preventDefault();
+    try {
+      setLoading(true);
+      const response = await axios.post('/give-backend-usdt', {
+        amount: backendUsdtForm.amount
+      });
+      setMessage(`Backend USDT: ${response.data.message} (New backend balance: ${response.data.newBackendBalance} USDT)`);
+    } catch (error) {
+      setMessage('Error giving backend USDT: ' + (error.response?.data?.error || error.message));
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Purchase GT tokens with USDT
   const purchaseGtTokens = async (e) => {
     e.preventDefault();
@@ -168,6 +202,41 @@ function App() {
     }
   };
 
+  // NEW: Stake into a match (Hardhat testing)
+  const stakeMatch = async (e) => {
+    e.preventDefault();
+    try {
+      setLoading(true);
+      const response = await axios.post('/match/stake', stakeForm);
+      const { matchStatus, player1Staked, player2Staked } = response.data;
+      setMessage(`Stake successful. Status: ${matchStatus}. P1: ${player1Staked}, P2: ${player2Staked}`);
+    } catch (error) {
+      setMessage('Error staking: ' + (error.response?.data?.error || error.message));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // NEW: Get match summary
+  const getMatchSummary = async (e) => {
+    e.preventDefault();
+    if (!summaryMatchId) {
+      setMessage('Enter match ID');
+      return;
+    }
+    try {
+      setLoading(true);
+      const response = await axios.get(`/match/summary/${summaryMatchId}`);
+      setSummaryData(response.data);
+      setMessage('Fetched match summary');
+    } catch (error) {
+      setSummaryData(null);
+      setMessage('Error getting summary: ' + (error.response?.data?.error || error.message));
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Submit match result
   const submitResult = async (e) => {
     e.preventDefault();
@@ -178,8 +247,14 @@ function App() {
     
     try {
       setLoading(true);
-      const response = await axios.post('/match/result', resultForm);
-      setMessage(`Result submitted: ${response.data.message}`);
+      const payload = { ...resultForm };
+      if (dryRun) payload.dryRun = true;
+      const response = await axios.post('/match/result', payload);
+      if (response.data?.preflight && dryRun) {
+        setMessage(`Preflight: ${response.data.preflight.decision} - ${response.data.preflight.reason}`);
+      } else {
+        setMessage(`Result submitted: ${response.data.message}`);
+      }
       setResultForm({ matchId: '', winner: '' });
     } catch (error) {
       setMessage('Error submitting result: ' + (error.response?.data?.error || error.message));
@@ -192,7 +267,7 @@ function App() {
   const getLeaderboard = async () => {
     try {
       const response = await axios.get('http://localhost:3001/leaderboard');
-      setLeaderboard(response.data.leaderboard || []);
+      setLeaderboard(response.data.leaderboard || response.data || []);
     } catch (error) {
       setMessage('Error getting leaderboard: ' + error.message);
     }
@@ -227,12 +302,39 @@ function App() {
     });
   };
 
+  // NEW handlers
+  const handleBackendUsdtFormChange = (e) => {
+    setBackendUsdtForm({
+      ...backendUsdtForm,
+      [e.target.name]: e.target.value
+    });
+  };
+
+  const handleStakeFormChange = (e) => {
+    setStakeForm({
+      ...stakeForm,
+      [e.target.name]: e.target.value
+    });
+  };
+
+  const handleSummaryIdChange = (e) => {
+    setSummaryMatchId(e.target.value);
+  };
+
+  const handleDryRunChange = (e) => {
+    setDryRun(e.target.checked);
+  };
+
   // Auto-fill player addresses
   useEffect(() => {
     if (account) {
       setMatchForm(prev => ({
         ...prev,
         player1: account
+      }));
+      setStakeForm(prev => ({
+        ...prev,
+        player: account
       }));
     }
   }, [account]);
@@ -306,6 +408,28 @@ function App() {
                   />
                   <button type="submit" disabled={loading} className="btn btn-primary">
                     {loading ? 'Adding...' : 'Add USDT'}
+                  </button>
+                </div>
+              </form>
+            </section>
+
+            {/* Give Backend USDT */}
+            <section className="section">
+              <h2>🏦 Backend USDT (for testing)</h2>
+              <form onSubmit={giveBackendUsdt}>
+                <div className="form-row">
+                  <input
+                    type="number"
+                    name="amount"
+                    placeholder="USDT Amount"
+                    value={backendUsdtForm.amount}
+                    onChange={handleBackendUsdtFormChange}
+                    step="0.01"
+                    min="0"
+                    required
+                  />
+                  <button type="submit" disabled={loading} className="btn">
+                    {loading ? 'Funding...' : 'Fund Backend USDT'}
                   </button>
                 </div>
               </form>
@@ -385,6 +509,56 @@ function App() {
                 </form>
               </div>
 
+              {/* Stake Form */}
+              <div className="form-group">
+                <h3>Stake into Match</h3>
+                <form onSubmit={stakeMatch}>
+                  <div className="form-row">
+                    <input
+                      type="text"
+                      name="matchId"
+                      placeholder="Match ID"
+                      value={stakeForm.matchId}
+                      onChange={handleStakeFormChange}
+                      required
+                    />
+                    <input
+                      type="text"
+                      name="player"
+                      placeholder="Your Address"
+                      value={stakeForm.player}
+                      onChange={handleStakeFormChange}
+                      required
+                    />
+                  </div>
+                  <button type="submit" disabled={loading} className="btn">
+                    {loading ? 'Staking...' : 'Stake'}
+                  </button>
+                </form>
+              </div>
+
+              {/* Match Summary */}
+              <div className="form-group">
+                <h3>Match Summary</h3>
+                <form onSubmit={getMatchSummary}>
+                  <div className="form-row">
+                    <input
+                      type="text"
+                      placeholder="Match ID"
+                      value={summaryMatchId}
+                      onChange={handleSummaryIdChange}
+                      required
+                    />
+                    <button type="submit" disabled={loading} className="btn">
+                      {loading ? 'Fetching...' : 'Get Summary'}
+                    </button>
+                  </div>
+                </form>
+                {summaryData && (
+                  <pre className="summary-pre">{JSON.stringify(summaryData, null, 2)}</pre>
+                )}
+              </div>
+
               {/* Submit Result Form */}
               <div className="form-group">
                 <h3>Submit Match Result</h3>
@@ -407,8 +581,14 @@ function App() {
                       required
                     />
                   </div>
+                  <div className="form-row">
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <input type="checkbox" checked={dryRun} onChange={handleDryRunChange} />
+                      Dry Run (no transaction)
+                    </label>
+                  </div>
                   <button type="submit" disabled={loading} className="btn btn-success">
-                    {loading ? 'Submitting...' : 'Submit Result'}
+                    {loading ? (dryRun ? 'Preflighting...' : 'Submitting...') : (dryRun ? 'Preflight Result' : 'Submit Result')}
                   </button>
                 </form>
               </div>

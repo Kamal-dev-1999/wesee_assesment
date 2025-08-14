@@ -1,0 +1,10 @@
+console.log("addr:", await c.getAddress());
+  console.log("tx:", c.deploymentTran  await c.waitForDeployment();
+  const MockUSDT = await ethers.getContractFactory  const c = await MockUSDT.deploy({
+  });    maxFeePerGas: ethers.parseUnits("120","gwei")    maxPriorityFeePerGas: ethers.parseUnits("8","gwei"), const c = await MockUSDT.deploy({
+  const MockUSDT = await ethers.getContractFactory
+exit()
+(await usdt.getAddress())
+await usdt.waitForDeployment();
+});   maxFeePerGas: ethers.parseUnits("80","gwei")const usdt = await MockUSDT.deploy({
+const MockUSDT = await ethers.getContractFactory("MockUSDT");ockUSDT");tory("MockUSDT");

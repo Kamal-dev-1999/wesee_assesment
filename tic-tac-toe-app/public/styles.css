@@ -1,0 +1,29 @@
+:root{--bg:#0b0e13;--panel:#141a22;--muted:#99a3b3;--text:#e6ecf2;--primary:#58a6ff;--accent:#00d084;--radius:12px;--mono:ui-monospace,Menlo,Monaco,Consolas,"Courier New",monospace}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:radial-gradient(1200px 800px at 20% 0%,#0b0e13,#060709 60%);color:var(--text);font:16px/1.45 Inter,system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial,sans-serif}
+header{display:flex;justify-content:space-between;align-items:center;padding:18px 24px;background:#0d1117;border-bottom:1px solid #111820}
+h1{margin:0;font-weight:700;font-size:20px;letter-spacing:.3px}
+#net{color:var(--muted);font-size:12px}
+main{margin:24px auto;padding:0 16px;max-width:980px;display:grid;grid-template-columns:1.1fr 1.2fr;gap:18px}
+section{background:var(--panel);border:1px solid #0f1520;border-radius:var(--radius);padding:16px;box-shadow:0 0 0 1px rgba(255,255,255,.02) inset,0 10px 40px rgba(0,0,0,.25)}
+section h2{margin:0 0 12px;font-size:16px;color:#d6e2f0}
+.row{display:flex;gap:10px;align-items:center}
+label{color:var(--muted);margin-right:8px}
+input{background:#0f1320;color:var(--text);border:1px solid #1e2633;border-radius:8px;padding:8px 10px;width:120px}
+button{background:#111a2a;color:var(--text);border:1px solid #22314a;border-radius:10px;padding:10px 14px;cursor:pointer;transition:all .2s}
+button:hover{border-color:var(--primary);color:#dff0ff}
+button:disabled{opacity:.5;cursor:not-allowed}
+.kv{display:grid;grid-template-columns:120px 1fr;gap:8px;align-items:center}
+.kv code{font-family:var(--mono);color:#bcd7ff}
+.hint{margin-top:10px;color:var(--muted);font-size:12px}
+.board{margin-top:10px;display:grid;grid-template-columns:repeat(3,92px);grid-template-rows:repeat(3,92px);gap:8px}
+.board button{width:92px;height:92px;font-size:42px;font-weight:700;background:#0f1520;border:1px solid #22314a;border-radius:12px}
+.board button.x{color:var(--primary)}
+.board button.o{color:var(--accent)}
+.meta{display:flex;gap:18px;color:var(--muted);font-size:14px}
+.meta code{color:#c9e1ff}
+#log{grid-column:1/-1}
+#logBox{width:100%;min-height:160px;background:#0a0f17;border:1px solid #1a2231;border-radius:10px;color:#b7c6db;padding:10px;font-family:var(--mono);resize:vertical}
+.hidden{display:none}
+
