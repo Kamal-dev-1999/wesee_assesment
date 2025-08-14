@@ -87,7 +87,7 @@ console.log('USDT address in use:', usdtAddress);
 const mockUSDTContract = new ethers.Contract(
 	usdtAddress,
 	MOCK_USDT_ABI,
-	wallet
+    wallet
 );
 
 // Verify backend is authorized
@@ -538,7 +538,7 @@ app.post('/match/stake', async (req, res) => {
 		console.error('Error staking:', error);
 		const msg = error?.shortMessage || error?.reason || error?.message || 'Failed to stake';
 		res.status(500).json({ error: msg });
-	}
+    }
 });
 
 // Start a new match

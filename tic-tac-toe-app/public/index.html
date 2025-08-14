@@ -1,65 +1,246 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Tic‑Tac‑Toe dApp</title>
-    <link rel="stylesheet" href="./styles.css" />
-  </head>
-  <body>
-    <header>
-      <h1>Tic‑Tac‑Toe</h1>
-      <div id="net">Sepolia</div>
-    </header>
-    <main>
-      <section id="wallet">
-        <h2>Wallet</h2>
-        <button id="connectBtn">Connect Wallet</button>
-        <div class="kv"><span>Address</span><code id="addr">—</code></div>
-        <div class="kv"><span>GT Balance</span><code id="gtBalance">—</code></div>
-      </section>
-      <section id="matchmake" class="hidden">
-        <h2>Matchmaking</h2>
-        <div class="row">
-          <label>Stake</label>
-          <input id="stakeInput" type="number" min="1" step="1" value="10" />
-          <button id="findBtn">Find Match</button>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎮 Crypto Tic-Tac-Toe | Web3 Gaming Platform</title>
+    <link rel="stylesheet" href="./styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">
+                <i class="fas fa-gamepad"></i>
+                <span>Crypto Tic-Tac-Toe</span>
+            </div>
+            <div class="nav-status">
+                <div class="network-badge">
+                    <i class="fas fa-circle"></i>
+                    <span id="net">Sepolia</span>
+                </div>
+                <div class="wallet-status" id="walletStatus">
+                    <i class="fas fa-wallet"></i>
+                    <span>Not Connected</span>
+                </div>
+            </div>
         </div>
-        <div class="hint">On-chain approve + stake would trigger after match found.</div>
-      </section>
-      <section id="staking" class="hidden">
-        <h2>Staking</h2>
-        <div class="meta">
-          <div><b>Match ID</b> <code id="stakeMatchId">—</code></div>
-          <div><b>Stake Amount</b> <span id="stakeAmount">—</span> GT</div>
-          <div><b>Status</b> <span id="stakeStatus">Waiting for match creation...</span></div>
+    </nav>
+
+    <!-- Main Container -->
+    <div class="main-container">
+        <!-- Left Panel - Game & Wallet -->
+        <div class="left-panel">
+            <!-- Wallet Section -->
+            <div class="card wallet-card" id="wallet">
+                <div class="card-header">
+                    <i class="fas fa-wallet"></i>
+                    <h2>Wallet Connection</h2>
+                </div>
+                <div class="card-content">
+                    <button id="connectBtn" class="btn btn-primary">
+                        <i class="fas fa-plug"></i>
+                        Connect MetaMask
+                    </button>
+                    <div class="wallet-info hidden" id="walletInfo">
+                        <div class="info-row">
+                            <span class="label">Address:</span>
+                            <code id="addr" class="address">—</code>
+                        </div>
+                        <div class="info-row">
+                            <span class="label">GT Balance:</span>
+                            <span id="gtBalance" class="balance">—</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Matchmaking Section -->
+            <div class="card matchmaking-card hidden" id="matchmake">
+                <div class="card-header">
+                    <i class="fas fa-users"></i>
+                    <h2>Find Match</h2>
+                </div>
+                <div class="card-content">
+                    <div class="stake-input-group">
+                        <label for="stakeInput">Stake Amount (GT)</label>
+                        <div class="input-with-icon">
+                            <i class="fas fa-coins"></i>
+                            <input id="stakeInput" type="number" min="1" step="1" value="10" placeholder="Enter stake amount">
+                        </div>
+                    </div>
+                    <button id="findBtn" class="btn btn-success">
+                        <i class="fas fa-search"></i>
+                        Find Match
+                    </button>
+                    <div class="status-hint">
+                        <i class="fas fa-info-circle"></i>
+                        On-chain approve + stake will trigger after match found
+                    </div>
+                </div>
+            </div>
+
+            <!-- Staking Section -->
+            <div class="card staking-card hidden" id="staking">
+                <div class="card-header">
+                    <i class="fas fa-lock"></i>
+                    <h2>Stake Tokens</h2>
+                </div>
+                <div class="card-content">
+                    <div class="match-info">
+                        <div class="info-item">
+                            <span class="label">Match ID:</span>
+                            <code id="stakeMatchId" class="match-id">—</code>
+                        </div>
+                        <div class="info-item">
+                            <span class="label">Stake Amount:</span>
+                            <span id="stakeAmount" class="amount">—</span> GT
+                        </div>
+                        <div class="info-item">
+                            <span class="label">Status:</span>
+                            <span id="stakeStatus" class="status">Waiting for match creation...</span>
+                        </div>
+                    </div>
+                    <div class="action-buttons">
+                        <button id="approveBtn" class="btn btn-warning" disabled>
+                            <i class="fas fa-check"></i>
+                            Approve GT
+                        </button>
+                        <button id="stakeBtn" class="btn btn-success" disabled>
+                            <i class="fas fa-lock"></i>
+                            Stake GT
+                        </button>
+                    </div>
+                    <div class="status-hint">
+                        <i class="fas fa-info-circle"></i>
+                        You must approve and stake your GT tokens to start the game
+                    </div>
+                </div>
+            </div>
+
+            <!-- Game Section -->
+            <div class="card game-card hidden" id="game">
+                <div class="card-header">
+                    <i class="fas fa-chess-board"></i>
+                    <h2>Game Board</h2>
+                </div>
+                <div class="card-content">
+                    <div class="game-info">
+                        <div class="info-item">
+                            <span class="label">Match ID:</span>
+                            <code id="mid" class="match-id">—</code>
+                        </div>
+                        <div class="info-item">
+                            <span class="label">You Are:</span>
+                            <span id="meAs" class="player-symbol">—</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="label">Turn:</span>
+                            <span id="turn" class="turn-indicator">—</span>
+                        </div>
+                    </div>
+                    <div id="board" class="game-board">
+                        <button data-i="0" class="board-cell"></button>
+                        <button data-i="1" class="board-cell"></button>
+                        <button data-i="2" class="board-cell"></button>
+                        <button data-i="3" class="board-cell"></button>
+                        <button data-i="4" class="board-cell"></button>
+                        <button data-i="5" class="board-cell"></button>
+                        <button data-i="6" class="board-cell"></button>
+                        <button data-i="7" class="board-cell"></button>
+                        <button data-i="8" class="board-cell"></button>
+                    </div>
+                </div>
+            </div>
         </div>
-        <div class="row">
-          <button id="approveBtn" disabled>Approve GT</button>
-          <button id="stakeBtn" disabled>Stake GT</button>
+
+        <!-- Right Panel - Leaderboard & Status -->
+        <div class="right-panel">
+            <!-- Leaderboard Section -->
+            <div class="card leaderboard-card">
+                <div class="card-header">
+                    <i class="fas fa-trophy"></i>
+                    <h2>Leaderboard</h2>
+                    <button id="refreshLeaderboard" class="btn btn-sm btn-outline">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                </div>
+                <div class="card-content">
+                    <div class="leaderboard-tabs">
+                        <button class="tab-btn active" data-tab="wins">Most Wins</button>
+                        <button class="tab-btn" data-tab="earnings">Top Earners</button>
+                        <button class="tab-btn" data-tab="games">Most Games</button>
+                    </div>
+                    <div class="leaderboard-content">
+                        <div id="leaderboardList" class="leaderboard-list">
+                            <div class="loading-placeholder">
+                                <i class="fas fa-spinner fa-spin"></i>
+                                <span>Loading leaderboard...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Status Log Section -->
+            <div class="card status-card">
+                <div class="card-header">
+                    <i class="fas fa-terminal"></i>
+                    <h2>Game Status</h2>
+                    <button id="clearLog" class="btn btn-sm btn-outline">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+                <div class="card-content">
+                    <textarea id="logBox" readonly placeholder="Game status and events will appear here..."></textarea>
+                </div>
+            </div>
+
+            <!-- Quick Stats -->
+            <div class="card stats-card">
+                <div class="card-header">
+                    <i class="fas fa-chart-bar"></i>
+                    <h2>Quick Stats</h2>
+                </div>
+                <div class="card-content">
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <div class="stat-value" id="totalGames">0</div>
+                            <div class="stat-label">Total Games</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" id="totalStaked">0</div>
+                            <div class="stat-label">GT Staked</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" id="activePlayers">0</div>
+                            <div class="stat-label">Active Players</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" id="avgStake">0</div>
+                            <div class="stat-label">Avg Stake</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
-        <div class="hint">You must approve and stake your GT tokens to start the game.</div>
-      </section>
-      <section id="game" class="hidden">
-        <h2>Game</h2>
-        <div class="meta">
-          <div><b>Match ID</b> <code id="mid">—</code></div>
-          <div><b>You Are</b> <span id="meAs">—</span></div>
-          <div><b>Turn</b> <span id="turn">—</span></div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay hidden">
+        <div class="loading-content">
+            <div class="spinner"></div>
+            <p>Processing transaction...</p>
         </div>
-        <div id="board" class="board">
-          <button data-i="0"></button><button data-i="1"></button><button data-i="2"></button>
-          <button data-i="3"></button><button data-i="4"></button><button data-i="5"></button>
-          <button data-i="6"></button><button data-i="7"></button><button data-i="8"></button>
-        </div>
-      </section>
-      <section id="log">
-        <h2>Status</h2>
-        <textarea id="logBox" readonly></textarea>
-      </section>
-    </main>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div id="toastContainer" class="toast-container"></div>
+
     <script src="/socket.io/socket.io.js"></script>
     <script type="module" src="./client.js"></script>
-  </body>
-  </html>
+</body>
+</html>
 

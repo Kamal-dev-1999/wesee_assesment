@@ -11,6 +11,11 @@ https://github.com/Kamal-dev-1999/wesee_assesment
 https://github.com/Kamal-dev-1999/weseefrontend
 
 
+
+###Deployed frontend url 
+https://grow-on.vercel.app/
+
+
 ## 🌟 Features
 
 - **🔗 Blockchain Integration**: Full on-chain match creation, staking, and result settlement
