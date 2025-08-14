@@ -153,14 +153,25 @@ function delay(ms) {
 
 // Helper function to get latest nonce and create transaction with it
 async function createTransactionWithLatestNonce(contract, methodName, args) {
-	// Get the LATEST nonce from the blockchain
+	// Use simple gas price calculation to avoid complex fee issues
+	const gasPrice = await provider.getFeeData();
+	const baseGasPrice = gasPrice.gasPrice || 20000000000n; // 20 gwei fallback
+	const adjustedGasPrice = baseGasPrice * 120n / 100n; // 20% increase
+	
+	console.log(`Base gas price: ${ethers.formatUnits(baseGasPrice, 'gwei')} gwei`);
+	console.log(`Adjusted gas price: ${ethers.formatUnits(adjustedGasPrice, 'gwei')} gwei`);
+	
+	// Build transaction object without nonce first
+	const tx = await contract[methodName].populateTransaction(...args, {
+		gasPrice: adjustedGasPrice
+	});
+	
+	// Get the latest nonce right before sending to avoid conflicts
 	const latestNonce = await provider.getTransactionCount(wallet.address, "latest");
 	console.log(`Using latest nonce: ${latestNonce}`);
 	
-	// Build transaction object with fresh nonce
-	const tx = await contract[methodName].populateTransaction(...args, {
-		nonce: latestNonce
-	});
+	// Add nonce to transaction
+	tx.nonce = latestNonce;
 	
 	// Sign and send the transaction
 	const signedTx = await wallet.sendTransaction(tx);
@@ -169,14 +180,25 @@ async function createTransactionWithLatestNonce(contract, methodName, args) {
 
 // Helper function to get latest nonce for deployer wallet
 async function createDeployerTransactionWithLatestNonce(contract, methodName, args, deployerWallet) {
-	// Get the LATEST nonce from the blockchain
+	// Use simple gas price calculation to avoid complex fee issues
+	const gasPrice = await provider.getFeeData();
+	const baseGasPrice = gasPrice.gasPrice || 20000000000n; // 20 gwei fallback
+	const adjustedGasPrice = baseGasPrice * 120n / 100n; // 20% increase
+	
+	console.log(`Base gas price for deployer: ${ethers.formatUnits(baseGasPrice, 'gwei')} gwei`);
+	console.log(`Adjusted gas price for deployer: ${ethers.formatUnits(adjustedGasPrice, 'gwei')} gwei`);
+	
+	// Build transaction object without nonce first
+	const tx = await contract[methodName].populateTransaction(...args, {
+		gasPrice: adjustedGasPrice
+	});
+	
+	// Get the latest nonce right before sending to avoid conflicts
 	const latestNonce = await provider.getTransactionCount(deployerWallet.address, "latest");
 	console.log(`Using latest nonce for deployer: ${latestNonce}`);
 	
-	// Build transaction object with fresh nonce
-	const tx = await contract[methodName].populateTransaction(...args, {
-		nonce: latestNonce
-	});
+	// Add nonce to transaction
+	tx.nonce = latestNonce;
 	
 	// Sign and send the transaction
 	const signedTx = await deployerWallet.sendTransaction(tx);
@@ -590,7 +612,38 @@ app.post('/match/start', async (req, res) => {
         
     } catch (error) {
         console.error('Error creating match:', error);
-        const msg = error?.reason || error?.message || 'Failed to create match';
+        
+        let msg = error?.reason || error?.message || 'Failed to create match';
+        
+        if (error.code === 'TRANSACTION_REPLACED' && error.reason === 'replaced') {
+            console.log('✅ Transaction was replaced but succeeded. Checking match status...');
+            try {
+                const hashedMatchId = ethers.id(matchId);
+                const matchData = await playGameContract.getMatch(hashedMatchId);
+                const exists = !(matchData.player1 === ethers.ZeroAddress && matchData.player2 === ethers.ZeroAddress);
+                
+                if (exists) {
+                    console.log('✅ Match created successfully despite replacement');
+                    return res.json({ 
+                        message: 'Match created successfully', 
+                        matchId,
+                        transactionHash: error.replacement?.hash || 'replaced'
+                    });
+                }
+            } catch (checkError) {
+                console.log('❌ Error checking replaced transaction:', checkError.message);
+            }
+        }
+        
+        // Handle specific replacement fee error
+        if (error.code === 'REPLACEMENT_UNDERPRICED') {
+            msg = 'Transaction replacement fee too low. Please wait a moment and try again.';
+            console.log('🔧 Replacement fee issue detected. Suggesting retry...');
+        } else if (error.code === 'NONCE_EXPIRED') {
+            msg = 'Transaction nonce expired. Please try again.';
+            console.log('🔧 Nonce expired. Suggesting retry...');
+        }
+        
         res.status(500).json({ error: msg });
     }
 });

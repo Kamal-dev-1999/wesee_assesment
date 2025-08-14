@@ -51,6 +51,38 @@ function removeFromQueue(stake, socketId) {
   }
 }
 
+async function waitForMatchConfirmation(matchId, maxAttempts = 15) {
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      console.log(`Checking match confirmation (attempt ${attempt}/${maxAttempts}): ${matchId}`)
+      const response = await axios.get(`${API_BASE}/match/summary/${matchId}`)
+      const summary = response.data
+      
+      console.log(`Match summary:`, summary)
+      
+      if (summary.exists && summary.status === 'PENDING') {
+        console.log(`Match confirmed on-chain: ${matchId}`)
+        return true
+      }
+      
+      if (summary.exists && summary.status === 'STAKED') {
+        console.log(`Match already staked: ${matchId}`)
+        return true
+      }
+      
+      console.log(`Match not ready yet: ${summary.status}`)
+     await new Promise(resolve => setTimeout(resolve, 3000))
+   } catch (error) {
+     console.log(`Error checking match confirmation (attempt ${attempt}):`, error.message)
+     if (attempt === maxAttempts) {
+       throw new Error(`Failed to confirm match after ${maxAttempts} attempts`)
+     }
+     await new Promise(resolve => setTimeout(resolve, 3000))
+   }
+ }
+ return false
+}
+
 io.on('connection', socket => {
   socket.emit('hello', { socketId: socket.id })
 
@@ -76,7 +108,6 @@ io.on('connection', socket => {
     const X = assignX ? opponent : { address: addr, socketId: socket.id }
     const O = assignX ? { address: addr, socketId: socket.id } : opponent
     
-    // Prevent same address from playing against itself
     if (X.address.toLowerCase() === O.address.toLowerCase()) {
       socket.emit('errorMsg', { message: 'Cannot match with yourself. Use different wallets.' })
       return
@@ -88,58 +119,103 @@ io.on('connection', socket => {
     removeFromQueue(key, socket.id)
     io.sockets.sockets.get(X.socketId)?.join(room)
     io.sockets.sockets.get(O.socketId)?.join(room)
-         io.to(room).emit('matchFound', { matchId, stakeAmount: key, playerX: X.address, playerO: O.address })
+    io.to(room).emit('matchFound', { matchId, stakeAmount: key, playerX: X.address, playerO: O.address })
      
-     // Create match on-chain and wait for staking
-     ;(async () => {
+         ;(async () => {
        try {
          console.log(`Creating match on-chain: ${matchId}`)
-         const response = await axios.post(`${API_BASE}/match/start`, {
-           matchId,
-           player1: X.address,
-           player2: O.address,
-           stake: String(key)
-         }, { headers: { 'X-API-KEY': API_KEY } })
-         console.log(`Match created on-chain:`, response.data)
          
-         // Poll for staking completion
-         const pollInterval = setInterval(async () => {
+         // Retry mechanism for match creation
+         let response;
+         let retries = 0;
+         const maxRetries = 3;
+         
+         while (retries < maxRetries) {
            try {
-             const summaryRes = await axios.get(`${API_BASE}/match/summary/${matchId}`)
-             const summary = summaryRes.data
-             console.log(`Match status:`, summary)
+             response = await axios.post(`${API_BASE}/match/start`, {
+               matchId,
+               player1: X.address,
+               player2: O.address,
+               stake: String(key)
+             }, { headers: { 'X-API-KEY': API_KEY } })
+             console.log(`Match created on-chain:`, response.data)
+             break;
+           } catch (createError) {
+             retries++;
+             console.log(`Match creation attempt ${retries} failed:`, createError.response?.data?.error || createError.message)
              
-             if (summary.statusText === 'STAKED' && summary.bothPlayersStaked) {
-               clearInterval(pollInterval)
-               console.log(`Both players staked, starting game`)
-               io.to(room).emit('gameStart', { matchId, next: match.next, board: match.board, stakeAmount: key })
-             } else {
-               io.to(room).emit('statusUpdate', { 
-                 message: `Waiting for players to stake. Status: ${summary.statusText}` 
-               })
+             if (retries >= maxRetries) {
+               throw createError;
              }
-           } catch (pollErr) {
-             console.log(`Error polling match status:`, pollErr.message)
-             if (pollErr.response) {
-               console.log(`Response status:`, pollErr.response.status)
-               console.log(`Response data:`, pollErr.response.data)
-             }
+             
+             // Wait before retry (longer wait for each retry)
+             const waitTime = retries * 3000;
+             console.log(`Waiting ${waitTime/1000} seconds before retry...`)
+             await new Promise(resolve => setTimeout(resolve, waitTime))
            }
-         }, 3000) // Poll every 3 seconds
-         
-       } catch (err) {
-         console.log(`Error creating match on-chain:`, err.message)
-         if (err.response) {
-           console.log(`Response status:`, err.response.status)
-           console.log(`Response data:`, err.response.data)
          }
-         // Fallback: start game anyway for testing
-         setTimeout(() => {
-           console.log(`Starting game without on-chain match (fallback)`)
-           io.to(room).emit('gameStart', { matchId, next: match.next, board: match.board, stakeAmount: key })
-         }, 2000)
-       }
-     })()
+        
+        io.to(room).emit('statusUpdate', { 
+          message: `Match created on-chain. Waiting for confirmation...` 
+        })
+        
+        const confirmed = await waitForMatchConfirmation(matchId)
+        
+        if (confirmed) {
+          io.to(room).emit('statusUpdate', { 
+            message: `✅ Match confirmed on-chain! You can now stake your tokens.` 
+          })
+          io.to(room).emit('matchReady', { matchId, stakeAmount: key })
+        } else {
+          io.to(room).emit('errorMsg', { 
+            message: `❌ Failed to confirm match on-chain. Please try again.` 
+          })
+        }
+        
+        // Start polling for staking status after match is confirmed
+        const pollInterval = setInterval(async () => {
+          try {
+            const summaryRes = await axios.get(`${API_BASE}/match/summary/${matchId}`)
+            const summary = summaryRes.data
+            console.log(`Polling match status:`, summary)
+            
+            if (summary.status === 'STAKED' && summary.bothPlayersStaked) {
+              clearInterval(pollInterval)
+              console.log(`Both players staked, starting game`)
+              io.to(room).emit('gameStart', { matchId, next: match.next, board: match.board, stakeAmount: key })
+            } else if (summary.status === 'PENDING') {
+              // Only show staking count if match is PENDING (ready for staking)
+              const stakedCount = (summary.player1Staked ? 1 : 0) + (summary.player2Staked ? 1 : 0)
+              // Only send status update if staking count changed to avoid spam
+              if (stakedCount > 0) {
+                io.to(room).emit('statusUpdate', { 
+                  message: `Waiting for players to stake (${stakedCount}/2). Status: ${summary.status}` 
+                })
+              }
+            } else {
+              // For other statuses, just log but don't spam the UI
+              console.log(`Match status: ${summary.status}, staked: ${summary.player1Staked}/${summary.player2Staked}`)
+            }
+          } catch (pollErr) {
+            console.log(`Error polling match status:`, pollErr.message)
+            if (pollErr.response) {
+              console.log(`Response status:`, pollErr.response.status)
+              console.log(`Response data:`, pollErr.response.data)
+            }
+          }
+        }, 3000)
+        
+      } catch (err) {
+        console.log(`Error creating match on-chain:`, err.message)
+        if (err.response) {
+          console.log(`Response status:`, err.response.status)
+          console.log(`Response data:`, err.response.data)
+        }
+        io.to(room).emit('errorMsg', { 
+          message: `Failed to create match on-chain: ${err.message}` 
+        })
+      }
+    })()
   })
 
   socket.on('makeMove', ({ matchId, index, address } = {}) => {
@@ -154,27 +230,26 @@ io.on('connection', socket => {
     const { winner, draw } = evaluateBoard(match.board)
     if (winner) {
       match.status = 'DONE'
-    io.to(match.room).emit('gameState', { board: match.board, next: null })
-    const winnerAddress = winner === 'X' ? match.players.X.address : match.players.O.address
-         io.to(match.room).emit('gameOver', { matchId: match.matchId, result: 'WIN', winnerSymbol: winner, winnerAddress })
+      io.to(match.room).emit('gameState', { board: match.board, next: null })
+      const winnerAddress = winner === 'X' ? match.players.X.address : match.players.O.address
+      io.to(match.room).emit('gameOver', { matchId: match.matchId, result: 'WIN', winnerSymbol: winner, winnerAddress })
      
-     // Commit result on-chain
-     ;(async () => {
-       try {
-         console.log(`Calling API to commit result for match ${match.matchId}, winner: ${winnerAddress}`)
-         const response = await axios.post(`${API_BASE}/match/result`, { 
-           matchId: match.matchId, 
-           winner: winnerAddress 
-         }, { headers: { 'X-API-KEY': API_KEY } })
-         console.log(`Result committed successfully:`, response.data)
-       } catch (err) {
-         console.log(`Error committing result:`, err.message)
-         if (err.response) {
-           console.log(`Response status:`, err.response.status)
-           console.log(`Response data:`, err.response.data)
-         }
-       }
-     })()
+      ;(async () => {
+        try {
+          console.log(`Calling API to commit result for match ${match.matchId}, winner: ${winnerAddress}`)
+          const response = await axios.post(`${API_BASE}/match/result`, { 
+            matchId: match.matchId, 
+            winner: winnerAddress 
+          }, { headers: { 'X-API-KEY': API_KEY } })
+          console.log(`Result committed successfully:`, response.data)
+        } catch (err) {
+          console.log(`Error committing result:`, err.message)
+          if (err.response) {
+            console.log(`Response status:`, err.response.status)
+            console.log(`Response data:`, err.response.data)
+          }
+        }
+      })()
       return
     }
     if (draw) {
@@ -195,30 +270,31 @@ io.on('connection', socket => {
       const isO = match.players.O.socketId === socket.id
       if (!isX && !isO) continue
       match.status = 'DONE'
-             const winnerAddress = isX ? match.players.O.address : match.players.X.address
-       io.to(match.room).emit('gameOver', { matchId: match.matchId, result: 'FORFEIT', winnerAddress })
-       
-       // Commit forfeit result on-chain
-       ;(async () => {
-         try {
-           console.log(`Calling API to commit forfeit result for match ${match.matchId}, winner: ${winnerAddress}`)
-           const response = await axios.post(`${API_BASE}/match/result`, { 
-             matchId: match.matchId, 
-             winner: winnerAddress 
-           }, { headers: { 'X-API-KEY': API_KEY } })
-           console.log(`Forfeit result committed successfully:`, response.data)
-         } catch (err) {
-           console.log(`Error committing forfeit result:`, err.message)
-           if (err.response) {
-             console.log(`Response status:`, err.response.status)
-             console.log(`Response data:`, err.response.data)
-           }
-         }
-       })()
-      break
+      const winnerAddress = isX ? match.players.O.address : match.players.X.address
+      io.to(match.room).emit('gameOver', { matchId: match.matchId, result: 'FORFEIT', winnerAddress })
+      
+      ;(async () => {
+        try {
+          console.log(`Calling API to commit forfeit result for match ${match.matchId}, winner: ${winnerAddress}`)
+          const response = await axios.post(`${API_BASE}/match/result`, { 
+            matchId: match.matchId, 
+            winner: winnerAddress 
+          }, { headers: { 'X-API-KEY': API_KEY } })
+          console.log(`Forfeit result committed successfully:`, response.data)
+        } catch (err) {
+          console.log(`Error committing forfeit result:`, err.message)
+          if (err.response) {
+            console.log(`Response status:`, err.response.status)
+            console.log(`Response data:`, err.response.data)
+          }
+        }
+      })()
     }
   })
 })
 
-server.listen(PORT, () => console.log(`tic-tac-toe on http://localhost:${PORT}`))
+server.listen(PORT, () => {
+  console.log(`Tic-Tac-Toe game server running on port ${PORT}`)
+  console.log(`API Base: ${API_BASE}`)
+})
 

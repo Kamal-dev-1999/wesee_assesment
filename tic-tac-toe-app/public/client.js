@@ -8,10 +8,9 @@ const CONFIG = {
     "function decimals() view returns (uint8)",
     "function symbol() view returns (string)"
   ],
-  apiBase: "http://localhost:3002"
+  apiBase: "http://localhost:3000"
 };
 
-// DOM Elements
 const $ = (q) => document.querySelector(q);
 const connectBtn = $("#connectBtn");
 const findBtn = $("#findBtn");
@@ -39,7 +38,6 @@ const refreshLeaderboardBtn = $("#refreshLeaderboard");
 const leaderboardList = $("#leaderboardList");
 const tabBtns = document.querySelectorAll(".tab-btn");
 
-// Stats elements
 const totalGamesEl = $("#totalGames");
 const totalStakedEl = $("#totalStaked");
 const activePlayersEl = $("#activePlayers");
@@ -51,14 +49,13 @@ let myAddress = null;
 let token = null;
 let socket = null;
 let currentMatchId = null;
+let hashedMatchId = null;
 let mySymbol = null;
 let currentTurn = null;
 let currentTab = "wins";
 
-// Check for existing wallet connection on page load
 const WALLET_STORAGE_KEY = 'ticTacToe_wallet_connected';
 
-// Utility functions
 function show(el) { el.classList.remove("hidden"); }
 function hide(el) { el.classList.add("hidden"); }
 function showLoading() { show(loadingOverlay); }
@@ -107,7 +104,6 @@ function updateWalletStatus(connected = false) {
   }
 }
 
-// Leaderboard functionality
 async function loadLeaderboard(tab = "wins") {
   try {
     leaderboardList.innerHTML = `
@@ -132,7 +128,6 @@ async function loadLeaderboard(tab = "wins") {
       return;
     }
 
-    // Sort players based on selected tab
     let sortedPlayers = [...data.players];
     switch (tab) {
       case "wins":
@@ -146,10 +141,8 @@ async function loadLeaderboard(tab = "wins") {
         break;
     }
 
-    // Update stats
     updateStats(data);
 
-    // Render leaderboard
     leaderboardList.innerHTML = sortedPlayers.map((player, index) => {
       const rank = index + 1;
       const rankClass = rank <= 3 ? `rank-${rank}` : '';
@@ -202,7 +195,34 @@ function updateStats(data) {
   avgStakeEl.textContent = avgStake;
 }
 
-// Wallet connection
+async function getHashedMatchId() {
+  if (!currentMatchId) return;
+  
+  try {
+    log("Getting hashed matchId from backend...");
+    const response = await fetch(`${CONFIG.apiBase}/match/${currentMatchId}`);
+    const matchData = await response.json();
+    
+    if (matchData.hashedMatchId) {
+      hashedMatchId = matchData.hashedMatchId;
+      log(`✅ Got hashed matchId: ${hashedMatchId}`);
+    } else {
+      // Fallback: hash the matchId ourselves
+      const { ethers } = await import("https://cdn.jsdelivr.net/npm/ethers@6.13.2/dist/ethers.min.js");
+      hashedMatchId = ethers.id(currentMatchId);
+      log(`✅ Generated hashed matchId: ${hashedMatchId}`);
+    }
+  } catch (error) {
+    console.error('Error getting hashed matchId:', error);
+    // Fallback: hash the matchId ourselves
+    const { ethers } = await import("https://cdn.jsdelivr.net/npm/ethers@6.13.2/dist/ethers.min.js");
+    hashedMatchId = ethers.id(currentMatchId);
+    log(`✅ Generated hashed matchId (fallback): ${hashedMatchId}`);
+  }
+}
+
+
+
 async function connectWallet() {
   if (!window.ethereum) { 
     showToast("MetaMask is required to play", "error");
@@ -287,7 +307,6 @@ async function autoReconnectWallet() {
   }
 }
 
-// Socket connection
 function connectSocket() {
   socket = io();
   
@@ -316,18 +335,39 @@ function connectSocket() {
     
     stakeMatchIdEl.textContent = evt.matchId;
     stakeAmountEl.textContent = evt.stakeAmount;
-    stakeStatusEl.textContent = "Match created! Ready to stake.";
+    stakeStatusEl.textContent = "⏳ Creating match on blockchain... Please wait.";
     show(stakingSection);
     hide(gameSection);
-    approveBtn.disabled = false;
+    approveBtn.disabled = true;
+    stakeBtn.disabled = true;
     
-    log("Match found! Ready to approve and stake your GT tokens.");
-    showToast("Match found! Please stake your tokens.", "success");
+    log("Match found! Creating match on blockchain... Please wait.");
+    showToast("Match found! Creating on blockchain...", "info");
+  });
+  
+  socket.on("matchReady", (evt) => {
+    log("✅ Match created on blockchain! Please approve GT tokens first.");
+    showToast("Match created! Please approve tokens first.", "success");
+    
+    // The server has already confirmed the match is on blockchain
+    // So we can enable the approve button immediately
+    stakeStatusEl.textContent = "✅ Match confirmed on blockchain! Please approve GT tokens first.";
+    approveBtn.disabled = false;
+    stakeBtn.disabled = true;
+    
+    // Get the hashed matchId from the backend for staking
+    getHashedMatchId();
   });
   
   socket.on("statusUpdate", (evt) => {
-    log(evt.message);
-    showToast(evt.message, "info");
+    // Only show status updates if they're not the repetitive polling messages
+    if (!evt.message.includes("Waiting for players to stake")) {
+      log(evt.message);
+      showToast(evt.message, "info");
+    } else {
+      // For polling messages, just update the status without showing toast
+      stakeStatusEl.textContent = evt.message;
+    }
   });
   
   socket.on("gameStart", ({ next, board, stakeAmount }) => {
@@ -360,12 +400,10 @@ function connectSocket() {
       showToast(me ? "Opponent forfeited" : "You forfeited", me ? "success" : "error");
     }
     
-    // Refresh leaderboard after game ends
     setTimeout(() => loadLeaderboard(currentTab), 2000);
   });
 }
 
-// Staking functionality
 async function handleApprove() {
   if (!signer || !currentMatchId) return;
   
@@ -388,10 +426,10 @@ async function handleApprove() {
     const tx = await gameTokenContract.approve(playGameAddress, amount);
     await tx.wait();
     
-    stakeStatusEl.textContent = "Approved! Ready to stake.";
+    stakeStatusEl.textContent = "Approved! You can now stake your tokens.";
     stakeBtn.disabled = false;
-    log("GT tokens approved successfully!");
-    showToast("Tokens approved successfully!", "success");
+    log("GT tokens approved successfully! You can now stake.");
+    showToast("Tokens approved successfully! You can now stake.", "success");
     
   } catch (error) {
     console.error('Approval error:', error);
@@ -405,7 +443,7 @@ async function handleApprove() {
 }
 
 async function handleStake() {
-  if (!signer || !currentMatchId) return;
+  if (!signer || !currentMatchId || !hashedMatchId) return;
   
   try {
     showLoading();
@@ -413,30 +451,63 @@ async function handleStake() {
     stakeStatusEl.textContent = "Staking GT tokens...";
     log("Staking GT tokens...");
     
+    // Verify match exists and is ready for staking
+    log("Verifying match status on blockchain...");
+    const response = await fetch(`${CONFIG.apiBase}/match/summary/${currentMatchId}`);
+    const matchStatus = await response.json();
+    log(`Match status: ${matchStatus.status} (exists: ${matchStatus.exists})`);
+    
+    if (!matchStatus.exists) {
+      throw new Error("Match not found on blockchain. Please wait for match confirmation.");
+    }
+    
+    if (matchStatus.status !== 'PENDING') {
+      throw new Error(`Match is not ready for staking. Current status: ${matchStatus.status}`);
+    }
+    
+    log("✅ Match verified! Sending stake transaction...");
+    log(`Using hashed matchId: ${hashedMatchId}`);
+    
     const playGameAddress = "0xfC1a1AeF66cBc3C5C1D3DdEbc9d09a44db28a41C";
     const playGameContract = new Contract(playGameAddress, [
       "function stake(bytes32 matchId) external"
     ], signer);
     
-    const tx = await playGameContract.stake(currentMatchId);
+    const tx = await playGameContract.stake(hashedMatchId);
+    log("✅ Stake transaction sent! Hash: " + tx.hash);
+    
+    log("⏳ Waiting for transaction confirmation...");
     await tx.wait();
     
-    stakeStatusEl.textContent = "Staked! Waiting for opponent...";
-    log("GT tokens staked successfully! Waiting for opponent to stake...");
-    showToast("Tokens staked! Waiting for opponent...", "success");
+    stakeStatusEl.textContent = "✅ Staked! Waiting for opponent...";
+    log("✅ GT tokens staked successfully! Waiting for opponent to stake...");
+    showToast("✅ Tokens staked! Waiting for opponent...", "success");
     
   } catch (error) {
     console.error('Staking error:', error);
-    stakeStatusEl.textContent = "Staking failed!";
     stakeBtn.disabled = false;
-    log(`Staking failed: ${error.message}`);
-    showToast("Staking failed: " + error.message, "error");
+    
+    let errorMessage = error.message;
+    if (error.message.includes("Only match players can stake")) {
+      errorMessage = "❌ Match not found on blockchain. Please wait for match confirmation.";
+      showToast("❌ Please wait for match to be confirmed on blockchain", "warning");
+      log("❌ Match not found on blockchain. Wait for confirmation.");
+    } else if (error.message.includes("execution reverted")) {
+      errorMessage = "❌ Transaction failed. Please check your balance and try again.";
+      showToast("❌ Transaction failed. Please try again.", "error");
+    } else if (error.message.includes("Match not found on blockchain")) {
+      errorMessage = "❌ Match not found on blockchain. Please wait and try again.";
+      showToast("❌ Match not found. Please wait and try again.", "warning");
+    } else {
+      showToast("❌ Staking failed: " + error.message, "error");
+    }
+    
+    log(`❌ Staking failed: ${errorMessage}`);
   } finally {
     hideLoading();
   }
 }
 
-// Event listeners
 connectBtn.addEventListener('click', async () => { 
   await connectWallet(); 
   if (!socket) connectSocket(); 
@@ -465,19 +536,16 @@ boardEl.addEventListener('click', e => {
 approveBtn.addEventListener('click', handleApprove);
 stakeBtn.addEventListener('click', handleStake);
 
-// Clear log
 clearLogBtn.addEventListener('click', () => {
   logBox.value = '';
   showToast("Log cleared", "info");
 });
 
-// Refresh leaderboard
 refreshLeaderboardBtn.addEventListener('click', () => {
   loadLeaderboard(currentTab);
   showToast("Leaderboard refreshed", "info");
 });
 
-// Tab switching
 tabBtns.forEach(btn => {
   btn.addEventListener('click', () => {
     tabBtns.forEach(b => b.classList.remove('active'));
@@ -487,19 +555,16 @@ tabBtns.forEach(btn => {
   });
 });
 
-// Initialize
 hide(matchmakeSection); 
 hide(stakingSection); 
 hide(gameSection); 
 setBoard(Array(9).fill(null));
 
-// Auto-reconnect wallet on page load
 document.addEventListener('DOMContentLoaded', () => {
   autoReconnectWallet();
   loadLeaderboard();
 });
 
-// Handle MetaMask account changes
 if (window.ethereum) {
   window.ethereum.on('accountsChanged', async (accounts) => {
     if (accounts.length === 0) {
