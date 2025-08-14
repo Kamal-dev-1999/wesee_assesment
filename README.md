@@ -101,7 +101,7 @@ npm run build && npm run prod
 ## 🎮 **How to Play**
 
 ### **Step 1: Connect Your Wallet** 
-![Wallet Connection](ui%20images/Screenshot%202025-08-14%20160305.png)
+![Wallet Connection](ui%20images/Screenshot%202025-08-14%20220657.png)
 
 - 🔗 Click **"Connect Wallet"** to connect your MetaMask
 - 🌐 Ensure you're on **Sepolia testnet**
@@ -109,7 +109,7 @@ npm run build && npm run prod
 - ✅ Wallet status shows "Connected" when ready
 
 ### **Step 2: Find a Match**
-![Matchmaking](ui%20images/Screenshot%202025-08-14%20160252.png)
+![Matchmaking](ui%20images/Screenshot%202025-08-14%20220834.png)
 
 - 🎯 Enter your **stake amount** (in GT tokens)
 - 🔍 Click **"Find Match"** to enter the queue
@@ -117,7 +117,7 @@ npm run build && npm run prod
 - 🎉 Get notified when a match is found
 
 ### **Step 3: Stake Your Tokens**
-![Staking Process](ui%20images/screencapture-localhost-8081-2025-08-14-15_32_35.png)
+![Staking Process](ui%20images/screencapture-localhost-8081-2025-08-14-18_36_36.png)
 
 - ✅ **Approve GT tokens** for the PlayGame contract
 - 🔒 **Stake your tokens** to confirm participation
@@ -125,7 +125,7 @@ npm run build && npm run prod
 - 🎮 Game automatically starts when both players are ready
 
 ### **Step 4: Play the Game**
-![Game Board](ui%20images/screencapture-localhost-8081-2025-08-14-15_32_25.png)
+![Game Board](ui%20images/screencapture-localhost-8081-2025-08-14-18_38_50.png)
 
 - 🎯 Take turns placing **X's and O's** on the 3x3 grid
 - 🏆 First player to get **3 in a row** wins
