@@ -1,425 +1,364 @@
-# 🎮 Gaming Staking dApp
+# 🎮 Tic-Tac-Toe dApp - Blockchain Gaming Platform
 
-A decentralized application (dApp) that facilitates a trustless staking and reward system for player-vs-player (PvP) games. The system manages an in-game ERC-20 token, allows players to purchase this token with USDT, enable them to stake tokens on a match, and automatically awards the entire prize pool to the winner.
+A complete, real-time, 2-player Tic-Tac-Toe game built on the Ethereum blockchain with integrated staking and reward system using ERC-20 tokens.
 
-## 📈 Project Progress & Development Journey
 
-### 🎯 Assessment Task Completion Status
+###Github repo link (both frontend and backend)
+https://github.com/Kamal-dev-1999/wesee_assesment
 
-This project was developed as a comprehensive assessment task to build a full-stack decentralized gaming application. The development process involved multiple iterations, problem-solving, and technical challenges that were successfully resolved.
 
-#### ✅ Completed Components
+###Github Frontend Repo link
+https://github.com/Kamal-dev-1999/weseefrontend
 
-1. **Smart Contracts (100% Complete)**
-   - ✅ GameToken.sol - ERC-20 token with minting restrictions
-   - ✅ TokenStore.sol - USDT to GT conversion mechanism
-   - ✅ PlayGame.sol - Match lifecycle and staking logic
-   - ✅ MockUSDT.sol - Test USDT token for development
 
-2. **Backend API Gateway (100% Complete)**
-   - ✅ Node.js Express server with comprehensive endpoints
-   - ✅ Smart contract integration with Ethers.js v6
-   - ✅ Token distribution system for testing
-   - ✅ Match management and result submission
-   - ✅ Error handling and validation
+## 🌟 Features
 
-3. **Frontend Interface (100% Complete)**
-   - ✅ React.js application with modern UI
-   - ✅ MetaMask wallet integration
-   - ✅ Real-time balance updates
-   - ✅ Match creation and management forms
-   - ✅ Leaderboard display
+- **🔗 Blockchain Integration**: Full on-chain match creation, staking, and result settlement
+- **⚡ Real-time Gameplay**: Socket.IO powered real-time game synchronization
+- **💰 Token Staking**: Players stake GT tokens to participate in matches
+- **🏆 Automated Rewards**: Winners automatically receive staked tokens on-chain
+- **🔐 Wallet Integration**: MetaMask integration with persistent connection
+- **🎯 Matchmaking**: Real-time player matching based on stake amounts
+- **📱 Responsive UI**: Modern, dark-mode interface with smooth animations
 
-4. **Off-Chain Indexer (100% Complete)**
-   - ✅ MongoDB integration (migrated from SQLite)
-   - ✅ Blockchain event listening
-   - ✅ Real-time leaderboard updates
-   - ✅ Player statistics tracking
-
-### 🖼️ Frontend UI Screenshots
-
-#### Main Application Interface
-![Gaming Staking dApp Frontend](screencapture-192-168-43-179-3000-2025-08-12-20_49_14.png)
-
-**Frontend Features Demonstrated:**
-- **Wallet Connection**: Successfully connected to MetaMask wallet (0x74e795799621e653bcd125fba2b0549203a5c35e)
-- **Token Information**: Real-time GT balance display with refresh functionality
-- **Match Management**: Complete forms for creating matches and submitting results
-- **Leaderboard**: Trophy section for displaying player rankings
-- **Modern UI**: Clean, responsive design with dark theme and card-based layout
-
-#### API Testing with Postman
-
-**Match Creation Success:**
-![Postman Match Creation](postman-match-start.png)
-
-**Token Distribution Testing:**
-![Postman Token Distribution](postman-get-test-tokens.png)
-
-### 🚧 Issues Faced & Solutions Implemented
-
-#### 1. **Ethers.js Version Compatibility Issues**
-**Problem**: Initial implementation used Ethers.js v5 syntax, but the project required v6 compatibility.
-**Solution**: 
-- Updated all contract interactions to use `ethers.JsonRpcProvider` instead of `ethers.providers.JsonRpcProvider`
-- Changed `.deployed()` to `.waitForDeployment()` for contract deployments
-- Updated `ethers.utils.parseEther` to `ethers.parseEther`
-- Modified address handling to use `ethers.getAddress()` for normalization
-
-#### 2. **Smart Contract Constructor Errors**
-**Problem**: OpenZeppelin v4 contracts had different constructor syntax.
-**Solution**: 
-- Fixed `Ownable(msg.sender)` to `Ownable()` in all contracts
-- Resolved naming conflicts by renaming `stake` parameter to `matchStake` in PlayGame.sol
-
-#### 3. **Token Distribution Challenges**
-**Problem**: Players couldn't receive GT tokens for testing, causing staking failures.
-**Solution**: 
-- Implemented comprehensive `/get-test-tokens` endpoint
-- Added automatic USDT to GT conversion for backend
-- Created balance verification system
-- Simplified approval process for testing purposes
-
-#### 4. **Database Migration from SQLite to MongoDB**
-**Problem**: Initial implementation used SQLite, but requirements changed to MongoDB.
-**Solution**: 
-- Completely rewrote indexer to use MongoDB client
-- Updated all database operations to use MongoDB collections
-- Implemented proper connection handling and indexing
-- Added MongoDB setup instructions
-
-#### 5. **Frontend Framework Migration**
-**Problem**: Initial HTML/JS frontend needed to be converted to React.
-**Solution**: 
-- Created complete React application structure
-- Implemented MetaMask integration with `ethers.BrowserProvider`
-- Added state management for wallet connection and balances
-- Created responsive UI components with modern styling
-
-#### 6. **Environment Configuration Issues**
-**Problem**: Backend couldn't find contract addresses and private keys.
-**Solution**: 
-- Enhanced environment variable debugging
-- Added comprehensive validation for all required variables
-- Implemented proper error messages for missing configuration
-- Created deployment script that generates `.env` file automatically
-
-#### 7. **Blockchain Event Handling**
-**Problem**: Indexer needed to listen to specific contract events.
-**Solution**: 
-- Implemented event listeners for `MatchCreated`, `MatchStaked`, and `MatchSettled`
-- Added proper event parsing and database storage
-- Created real-time leaderboard updates
-
-### 🔧 Technical Challenges Overcome
-
-1. **Address Validation**: Implemented strict Ethereum address validation using `ethers.isAddress()`
-2. **Bytes32 Handling**: Properly hashed string matchIds to bytes32 format using `ethers.id()`
-3. **Reentrancy Protection**: Added `nonReentrant` modifiers to all critical functions
-4. **Error Handling**: Comprehensive error messages and proper HTTP status codes
-5. **Cross-Service Communication**: Ensured proper communication between Hardhat node, backend, indexer, and frontend
-
-### 📊 Testing & Validation
-
-#### API Endpoints Successfully Tested:
-- ✅ `POST /get-test-tokens` - Token distribution
-- ✅ `POST /match/start` - Match creation
-- ✅ `POST /match/stake` - Player staking
-- ✅ `POST /match/result` - Result submission
-- ✅ `GET /balance/:address` - Balance checking
-- ✅ `GET /leaderboard` - Leaderboard data
-
-#### Smart Contract Functions Validated:
-- ✅ Token minting and transfer
-- ✅ Match creation and management
-- ✅ Staking mechanism
-- ✅ Winner payout system
-- ✅ Timeout and refund logic
-
-### 🎉 Final Achievement
-
-The project successfully demonstrates:
-- **Full-stack dApp development** with blockchain integration
-- **Modern web technologies** (React, Node.js, MongoDB)
-- **Smart contract development** with security best practices
-- **Real-time data processing** and event handling
-- **Comprehensive testing** and error handling
-- **Production-ready architecture** with proper separation of concerns
-
-## 🏗️ System Architecture
-
-The dApp consists of four main components:
-
-1. **Smart Contracts (On-Chain Logic)**: Core decentralized logic handling tokenomics and value transfer
-2. **Backend API (Off-Chain Gateway)**: Node.js server acting as a secure bridge between game servers and smart contracts
-3. **Frontend (User Interface)**: HTML/JS interface for user interactions
-4. **Indexer & Leaderboard (Off-Chain Data Processor)**: Standalone script listening to blockchain events for leaderboard data
-
-## 📁 Project Structure
+## 🏗️ Architecture
 
 ```
-wesee/
-├── contracts/                 # Solidity smart contracts
-│   ├── GameToken.sol         # ERC-20 token contract
-│   ├── TokenStore.sol        # Token purchase contract
-│   ├── PlayGame.sol          # Game logic contract
-│   └── MockUSDT.sol          # Mock USDT for testing
-├── scripts/
-│   └── deploy.js             # Contract deployment script
-├── backend/
-│   └── server.js             # Node.js API server
-├── indexer/
-│   └── indexer.js            # Blockchain event indexer
-├── frontend/
-│   └── index.html            # Web interface
-├── package.json               # Dependencies and scripts
-├── hardhat.config.js         # Hardhat configuration
-└── README.md                  # This file
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   Frontend      │    │   Game Server   │    │   Backend API   │
+│   (React/JS)    │◄──►│   (Socket.IO)   │◄──►│   (Node.js)     │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+         │                       │                       │
+         │                       │                       │
+         ▼                       ▼                       ▼
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   MetaMask      │    │   Matchmaking   │    │   Smart         │
+│   Wallet        │    │   Queue         │    │   Contracts     │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
 ```
 
 ## 🚀 Quick Start
 
 ### Prerequisites
-
-- Node.js (v16 or higher)
-- npm or yarn
+- Node.js (v16+)
 - MetaMask browser extension
-- Git
+- Sepolia testnet ETH for gas fees
 
-### 1. Install Dependencies
+### Installation
 
+1. **Clone and Install Dependencies**
 ```bash
-cd wesee
+cd wesee/tic-tac-toe-app
 npm install
 ```
 
-### 2. Start Local Blockchain
-
+2. **Start the Game Server**
 ```bash
-npm run node
+npm start
 ```
 
-This starts a local Hardhat network on `http://127.0.0.1:8545`
-
-### 3. Deploy Smart Contracts
-
-In a new terminal:
-
-```bash
-npm run deploy
+3. **Open in Browser**
+```
+http://localhost:8081
 ```
 
-This will:
-- Deploy all smart contracts
-- Create a `.env` file with contract addresses
-- Display deployment summary
+## 🎮 How to Play
 
-### 4. Start Backend API
+### 1. Connect Wallet
+![Wallet Connection](ui%20images/Screenshot%202025-08-14%20160305.png)
 
-In a new terminal:
+- Click "Connect Wallet" to connect your MetaMask
+- Ensure you're on Sepolia testnet
+- Your GT token balance will be displayed
 
-```bash
-npm run backend
+### 2. Find a Match
+![Matchmaking](ui%20images/Screenshot%202025-08-14%20160252.png)
+
+- Enter your stake amount (in GT tokens)
+- Click "Find Match" to enter the queue
+- Wait for an opponent with the same stake amount
+
+### 3. Stake Tokens
+![Staking Interface](ui%20images/screencapture-localhost-8081-2025-08-14-15_32_35.png)
+
+- **Approve GT tokens** for the PlayGame contract
+- **Stake your tokens** to confirm participation
+- Wait for both players to stake before game begins
+
+### 4. Play the Game
+![Game Board](ui%20images/screencapture-localhost-8081-2025-08-14-15_32_25.png)
+
+- Take turns placing X's and O's on the 3x3 grid
+- First player to get 3 in a row wins
+- Game ends in draw if board is full
+
+### 5. Collect Rewards
+- **Winner**: Receives all staked tokens from both players
+- **Loser**: Loses their staked tokens
+- **Draw**: Both players get their tokens back
+
+## 🔧 Technical Implementation
+
+### Smart Contracts
+
+#### GameToken.sol
+```solidity
+// ERC-20 token for game rewards
+contract GameToken is ERC20, Ownable {
+    function mint(address to, uint256 amount) external onlyTokenStore
+}
 ```
 
-The backend API will run on `http://localhost:3000`
-
-### 5. Start Indexer
-
-In a new terminal:
-
-```bash
-npm run indexer
+#### PlayGame.sol
+```solidity
+// Manages match lifecycle and staking
+contract PlayGame is Ownable, ReentrancyGuard {
+    function createMatch(bytes32 matchId, address p1, address p2, uint256 stake) external
+    function stake(bytes32 matchId) external
+    function commitResult(bytes32 matchId, address winner) external
+}
 ```
 
-The indexer will run on `http://localhost:3001`
+### Backend API Endpoints
 
-### 6. Open Frontend
+#### Match Management
+- `POST /match/start` - Create new match on-chain
+- `GET /match/summary/:matchId` - Get match status and staking info
+- `POST /match/result` - Commit game result and distribute rewards
 
-Open `frontend/index.html` in your browser or serve it with a local server.
+#### Token Management
+- `POST /purchase` - Buy GT tokens with USDT
+- `POST /add-dummy-usdt` - Add test USDT to wallet
+- `GET /balance/:address` - Check token balances
 
-## 🔧 Configuration
+### Frontend Features
+
+#### Wallet Integration
+- Persistent MetaMask connection
+- Auto-reconnect on page refresh
+- Account switching support
+- Chain validation (Sepolia testnet)
+
+#### Real-time Gameplay
+- Socket.IO for instant updates
+- Live matchmaking queue
+- Real-time game state synchronization
+- Turn-based gameplay with validation
+
+#### UI/UX Features
+- Dark mode interface
+- Responsive design
+- Loading states and error handling
+- Status updates and notifications
+
+## 📊 Game Flow
+
+```mermaid
+sequenceDiagram
+    participant P1 as Player 1
+    participant P2 as Player 2
+    participant GS as Game Server
+    participant API as Backend API
+    participant SC as Smart Contracts
+
+    P1->>GS: Find Match (stake: 10 GT)
+    P2->>GS: Find Match (stake: 10 GT)
+    GS->>GS: Match Found
+    GS->>API: Create Match On-Chain
+    API->>SC: createMatch()
+    
+    P1->>SC: Approve GT tokens
+    P1->>SC: Stake GT tokens
+    P2->>SC: Approve GT tokens
+    P2->>SC: Stake GT tokens
+    
+    GS->>API: Poll Match Status
+    API->>GS: Both Players Staked
+    GS->>P1: Game Start
+    GS->>P2: Game Start
+    
+    P1->>GS: Make Move
+    GS->>P2: Update Board
+    P2->>GS: Make Move
+    GS->>P1: Update Board
+    
+    Note over GS: Game Continues...
+    
+    GS->>API: Game Result (Winner)
+    API->>SC: commitResult()
+    SC->>P1: Transfer Rewards
+```
+
+## 🎨 UI Screenshots
+
+### Main Interface
+![Main Interface](ui%20images/Screenshot%202025-08-14%20152348.png)
+
+### Game in Progress
+![Game in Progress](ui%20images/Screenshot%202025-08-14%20144652.png)
+
+### Matchmaking
+![Matchmaking](ui%20images/Screenshot%202025-08-14%20103916.png)
+
+### Staking Process
+![Staking Process](ui%20images/Screenshot%202025-08-14%20103331.png)
+
+## 🔗 API Documentation
+
+### Match Endpoints
+
+#### Create Match
+```http
+POST /match/start
+Content-Type: application/json
+X-API-KEY: dev
+
+{
+  "matchId": "0x...",
+  "player1": "0x...",
+  "player2": "0x...",
+  "stake": "10"
+}
+```
+
+#### Get Match Summary
+```http
+GET /match/summary/:matchId
+```
+
+Response:
+```json
+{
+  "matchId": "0x...",
+  "statusText": "STAKED",
+  "bothPlayersStaked": true,
+  "player1": "0x...",
+  "player2": "0x...",
+  "stake": "10"
+}
+```
+
+#### Commit Result
+```http
+POST /match/result
+Content-Type: application/json
+X-API-KEY: dev
+
+{
+  "matchId": "0x...",
+  "winner": "0x..."
+}
+```
+
+## 🛠️ Development
+
+### Project Structure
+```
+tic-tac-toe-app/
+├── public/
+│   ├── index.html          # Main HTML file
+│   ├── client.js           # Frontend logic
+│   └── styles.css          # Styling
+├── server.js               # Game server (Socket.IO)
+├── package.json            # Dependencies
+└── README.md              # This file
+```
+
+### Key Technologies
+- **Frontend**: HTML5, CSS3, Vanilla JavaScript, Ethers.js
+- **Backend**: Node.js, Express.js, Socket.IO
+- **Blockchain**: Ethereum (Sepolia), Solidity, Hardhat
+- **Real-time**: Socket.IO for live communication
 
 ### Environment Variables
-
-Create a `.env` file in the `wesee` directory with the following variables:
-
 ```env
-# Contract Addresses (filled after deployment)
-MOCK_USDT_ADDRESS=0x...
-GAME_TOKEN_ADDRESS=0x...
-TOKEN_STORE_ADDRESS=0x...
-PLAY_GAME_ADDRESS=0x...
-
-# Network Configuration
-RPC_URL=http://127.0.0.1:8545
-CHAIN_ID=1337
-
-# Backend Configuration
-BACKEND_PRIVATE_KEY=0x... # Private key for backend operations
-BACKEND_PORT=3000
-
-# Indexer Configuration
-INDEXER_PORT=3001
+PORT=8081
+API_BASE=http://localhost:3000
+API_KEY=dev
 ```
-
-### Network Configuration
-
-The dApp is configured for local development by default. To use on other networks:
-
-1. Update `hardhat.config.js` with network details
-2. Update `.env` file with correct RPC URLs
-3. Ensure you have testnet/mainnet ETH for gas fees
-
-## 🎯 Smart Contracts
-
-### GameToken.sol
-- **Purpose**: ERC-20 token (GT) for in-game transactions
-- **Features**: 
-  - 18 decimals
-  - Only mintable by TokenStore contract
-  - Standard ERC-20 functionality
-
-### TokenStore.sol
-- **Purpose**: On-ramp for purchasing GT with USDT
-- **Features**:
-  - 1:1 USDT to GT conversion rate
-  - Reentrancy protection
-  - Owner withdrawal functionality
-
-### PlayGame.sol
-- **Purpose**: Manages match lifecycle and staking
-- **Features**:
-  - Match creation and management
-  - Player staking system
-  - Automatic winner payout
-  - Timeout and refund mechanisms
-
-### MockUSDT.sol
-- **Purpose**: Test USDT token with 6 decimals
-- **Features**: Pre-minted supply for testing
-
-## 🌐 API Endpoints
-
-### Backend API (`http://localhost:3000`)
-
-- `GET /health` - Health check
-- `GET /balance/:address` - Get GT balance for address
-- `GET /rate` - Get token conversion rate
-- `POST /match/start` - Create new match
-- `POST /match/result` - Submit match result
-
-### Indexer API (`http://localhost:3001`)
-
-- `GET /leaderboard` - Get top 10 players by GT won
-- `GET /player/:address` - Get player statistics
-
-## 🎮 Usage Flow
-
-### 1. Token Purchase
-1. User connects MetaMask wallet
-2. User approves USDT spending for TokenStore
-3. User calls `buy()` function with USDT amount
-4. GT tokens are minted to user's address
-
-### 2. Match Creation
-1. Backend creates match via `createMatch()`
-2. Players stake GT tokens via `stake()`
-3. Match status changes to "STAKED" when both players stake
-
-### 3. Match Resolution
-1. Backend submits winner via `commitResult()`
-2. Entire prize pool (2 × stake) is transferred to winner
-3. Match status changes to "SETTLED"
-
-### 4. Leaderboard Updates
-1. Indexer listens to blockchain events
-2. Player statistics are updated in real-time
-3. Leaderboard API serves current rankings
 
 ## 🧪 Testing
 
-### Run Tests
+### Manual Testing
+1. Open two browser windows
+2. Connect different MetaMask accounts
+3. Find match with same stake amount
+4. Complete staking process
+5. Play game and verify rewards
+
+### Automated Testing
 ```bash
-npm test
+# Test API endpoints
+cd ../wesee
+npm run test-api
+
+# Test smart contracts
+npx hardhat test
 ```
 
-### Manual Testing
-1. Deploy contracts to local network
-2. Start backend and indexer
-3. Use frontend to interact with contracts
-4. Monitor blockchain events and database updates
+## 🚀 Deployment
+
+### Local Development
+```bash
+# Start backend API
+cd wesee
+npm run backend
+
+# Start game server
+cd tic-tac-toe-app
+npm start
+```
+
+### Production Deployment
+1. Deploy smart contracts to mainnet
+2. Update contract addresses in frontend
+3. Deploy backend API to cloud provider
+4. Deploy frontend to CDN/hosting service
 
 ## 🔒 Security Features
 
-- **Access Control**: Only authorized backend can create matches and submit results
-- **Reentrancy Protection**: All critical functions protected against reentrancy attacks
-- **Input Validation**: Comprehensive validation of all inputs
-- **Status Checks**: Prevents invalid state transitions
-- **Timeout Mechanisms**: Automatic refunds for unresolved matches
+- **Reentrancy Protection**: Smart contracts use ReentrancyGuard
+- **Access Control**: Only authorized contracts can mint tokens
+- **Input Validation**: All user inputs are validated
+- **Transaction Verification**: All blockchain transactions are verified
+- **Error Handling**: Comprehensive error handling and user feedback
 
-## 📊 Database Schema
+## 📈 Performance
 
-### Players Table
-- `address` (TEXT, PRIMARY KEY)
-- `total_matches` (INTEGER)
-- `total_wins` (INTEGER)
-- `total_gt_won` (REAL)
-- `total_gt_staked` (REAL)
-- `last_updated` (DATETIME)
+- **Real-time Updates**: < 100ms latency for game actions
+- **Blockchain Integration**: Optimized gas usage for transactions
+- **UI Responsiveness**: Smooth 60fps animations
+- **Scalability**: Horizontal scaling support for multiple game servers
 
-### Matches Table
-- `match_id` (TEXT, PRIMARY KEY)
-- `player1` (TEXT)
-- `player2` (TEXT)
-- `stake` (REAL)
-- `status` (TEXT)
-- `winner` (TEXT)
-- `created_at` (DATETIME)
-- `settled_at` (DATETIME)
+## 🤝 Contributing
 
-### Events Table
-- `id` (INTEGER, PRIMARY KEY)
-- `event_type` (TEXT)
-- `match_id` (TEXT)
-- `player_address` (TEXT)
-- `amount` (REAL)
-- `block_number` (INTEGER)
-- `transaction_hash` (TEXT)
-- `timestamp` (DATETIME)
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests if applicable
+5. Submit a pull request
 
-## 🚨 Troubleshooting
+## 📄 License
 
-### Common Issues
+This project is licensed under the MIT License - see the LICENSE file for details.
 
-1. **Backend Connection Failed**
-   - Ensure Hardhat node is running
-   - Check contract addresses in `.env`
-   - Verify backend private key has sufficient ETH
+## 🙏 Acknowledgments
 
-2. **Frontend Not Loading**
-   - Check browser console for errors
-   - Ensure MetaMask is connected to correct network
-   - Verify backend and indexer are running
+- **Ethers.js**: Ethereum library for frontend integration
+- **Socket.IO**: Real-time communication
+- **Hardhat**: Ethereum development environment
+- **OpenZeppelin**: Secure smart contract libraries
 
-3. **Contract Deployment Failed**
-   - Check Hardhat node is running
-   - Ensure deployer account has sufficient ETH
-   - Check Solidity compiler version compatibility
+## 📞 Support
 
-### Logs and Debugging
+For questions or support:
+- Create an issue on GitHub
+- Check the documentation
+- Review the smart contract code
 
-- Backend logs: Check terminal running `npm run backend`
-- Indexer logs: Check terminal running `npm run indexer`
-- Blockchain logs: Check Hardhat node terminal
-- Frontend logs: Check browser developer console
+---
 
-## 🔮 Future Enhancements
+**🎮 Ready to play? Connect your wallet and start staking!**
 
-- **Multi-chain Support**: Deploy to Ethereum mainnet and Layer 2s
-- **Advanced Match Types**: Tournament brackets, team matches
-- **Governance**: DAO for protocol upgrades
-- **Analytics Dashboard**: Advanced statistics and charts
-- **Mobile App**: React Native or Flutter application
-- **API Rate Limiting**: Protect against abuse
-- **WebSocket Support**: Real-time updates
+
+
