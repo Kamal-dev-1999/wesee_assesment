@@ -2,6 +2,15 @@
 
 A complete, real-time, 2-player Tic-Tac-Toe game built on the Ethereum blockchain with integrated staking and reward system using ERC-20 tokens.
 
+
+###Github repo link (both frontend and backend)
+https://github.com/Kamal-dev-1999/wesee_assesment
+
+
+###Github Frontend Repo link
+https://github.com/Kamal-dev-1999/weseefrontend
+
+
 ## 🌟 Features
 
 - **🔗 Blockchain Integration**: Full on-chain match creation, staking, and result settlement
@@ -350,3 +359,6 @@ For questions or support:
 ---
 
 **🎮 Ready to play? Connect your wallet and start staking!**
+
+
+
