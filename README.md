@@ -197,16 +197,16 @@ sequenceDiagram
 ## 🎨 UI Screenshots
 
 ### Main Interface
-![Main Interface](ui%20images/Screenshot%202025-08-14%20152348.png)
+![Main Interface](ui%20images/Screenshot%202025-08-14%20160305.png)
 
 ### Game in Progress
-![Game in Progress](ui%20images/Screenshot%202025-08-14%20144652.png)
+![Game in Progress](ui%20images/screencapture-localhost-8081-2025-08-14-15_32_25.png)
 
 ### Matchmaking
-![Matchmaking](ui%20images/Screenshot%202025-08-14%20103916.png)
+![Matchmaking](ui%20images/Screenshot%202025-08-14%20160252.png)
 
 ### Staking Process
-![Staking Process](ui%20images/Screenshot%202025-08-14%20103331.png)
+![Staking Process](ui%20images/screencapture-localhost-8081-2025-08-14-15_32_35.png)
 
 ## 🔗 API Documentation
 
