@@ -274,20 +274,32 @@ sequenceDiagram
 ## 🎨 **UI Screenshots**
 
 ### **🏠 Main Interface**
-![Main Interface](ui%20images/Screenshot%202025-08-14%20160305.png)
+![Main Interface](ui%20images/Screenshot%202025-08-14%20220922.png)
 *Modern, dark-themed interface with wallet connection and game status*
 
 ### **🎮 Game in Progress**
-![Game in Progress](ui%20images/screencapture-localhost-8081-2025-08-14-15_32_25.png)
+![Game in Progress](ui%20images/screencapture-localhost-8081-2025-08-14-18_38_50.png)
 *Real-time game board with turn indicators and move validation*
 
 ### **🔍 Matchmaking**
-![Matchmaking](ui%20images/Screenshot%202025-08-14%20160252.png)
+![Matchmaking](ui%20images/Screenshot%202025-08-14%20220834.png)
 *Smart matchmaking system with stake-based player pairing*
 
 ### **💰 Staking Process**
-![Staking Process](ui%20images/screencapture-localhost-8081-2025-08-14-15_32_35.png)
+![Staking Process](ui%20images/screencapture-localhost-8081-2025-08-14-18_36_36.png)
 *Token approval and staking interface with blockchain confirmation*
+
+### **📱 Mobile Responsive**
+![Mobile View](ui%20images/screencapture-grow-on-vercel-app-2025-08-14-18_40_44.png)
+*Fully responsive design that works perfectly on mobile devices*
+
+### **🎯 Game Statistics**
+![Game Stats](ui%20images/Screenshot%202025-08-14%20220750.png)
+*Real-time leaderboard and player statistics tracking*
+
+### **🔐 Wallet Integration**
+![Wallet Connect](ui%20images/Screenshot%202025-08-14%20220657.png)
+*Seamless MetaMask integration with balance display*
 
 ---
 
